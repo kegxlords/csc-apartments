@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deposit · Pinnacle Apartments</title>
+<meta name="theme-color" content="#1F6FEB">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/theme.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<style>
+  .quick-amts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .bal-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--g-money);color:#fff;border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--sh-blue);margin-bottom:16px}
+  .bal-strip .k{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+  .bal-strip .v{font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-.03em}
+</style>
+</head>
+<body data-page="deposit">
+<div class="boot" id="boot"><div class="boot-in">
+  <div class="boot-ring"><span class="crest-mark"><svg viewBox="0 0 40 40"><path d="M20 4 L34 13 V36 H6 V13 Z" fill="none" stroke="#fff" stroke-width="2.4"/><rect x="12" y="19" width="6" height="6" fill="#FFD9EC"/><rect x="22" y="19" width="6" height="6" fill="#fff"/></svg></span></div>
+  <div class="boot-txt">Pinnacle</div>
+</div></div>
+
+<div class="app">
+  <header id="hdr"></header>
+  <main class="main">
+    <div class="rise rise-1" style="margin-bottom:16px">
+      <span style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--pink);display:block">Wallet</span>
+      <h1>Fund Your Account</h1>
+    </div>
+
+    <div class="bal-strip rise rise-2">
+      <div><div class="k">Available balance</div><div class="v" id="bal">₦0</div></div>
+      <a class="btn btn--sm" style="background:rgba(255,255,255,.2);color:#fff" href="transactions.html">History</a>
+    </div>
+
+    <div class="rise rise-3" style="margin-bottom:16px" id="bank"></div>
+
+    <div class="alert alert--info show rise rise-3" style="margin-bottom:16px">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 11v6m0-9.5v.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <span>Transfer exactly the amount you enter using the details above, then submit the form. Deposits are confirmed by our team and credited to your wallet.</span>
+    </div>
+
+    <div class="card rise rise-4" style="margin-bottom:16px">
+      <h3 style="margin-bottom:14px">Confirm your transfer</h3>
+      <div class="alert" id="alert" role="status" aria-live="polite"></div>
+      <div class="quick-amts" id="quick"></div>
+      <form id="depForm">
+        <div class="field-row">
+          <label class="label" for="amt">Amount (₦)</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 7a2 2 0 0 1 2-2h13v3H5a2 2 0 0 1-2-1zm0 1v10a2 2 0 0 0 2 2h15V8H5a2 2 0 0 1-2-1zm13 4h3v4h-3a2 2 0 0 1 0-4z"/></svg>
+            <input class="input" id="amt" type="number" inputmode="numeric" placeholder="0" required>
+          </div>
+          <p class="hint" id="limits"></p>
+        </div>
+        <div class="field-row">
+          <label class="label" for="ref">Transfer reference <span class="opt">(optional)</span></label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 7h18v4a2 2 0 0 0 0 4v4H3v-4a2 2 0 0 0 0-4zm6 1v8" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            <input class="input" id="ref" placeholder="Session ID / narration">
+          </div>
+        </div>
+        <button class="btn btn--blue btn--block" type="submit">Submit deposit</button>
+      </form>
+    </div>
+
+    <div class="card rise rise-5">
+      <h3 style="margin-bottom:6px">Your deposit requests</h3>
+      <div class="rows" id="recent"></div>
+    </div>
+  </main>
+  <nav id="nav"></nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/actions.js"></script>
+<script src="assets/js/money.js"></script>
+</body>
+</html>
