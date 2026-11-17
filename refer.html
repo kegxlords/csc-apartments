@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Refer & Earn · Pinnacle Apartments</title>
+<meta name="theme-color" content="#EC2E86">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/theme.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<style>
+  .ref-hero{background:var(--g-cta);color:#fff;border-radius:var(--r-lg);padding:22px;box-shadow:var(--sh-pink);margin-bottom:18px;position:relative;overflow:hidden}
+  .ref-hero::after{content:'';position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.28),transparent 70%)}
+  .ref-hero .k{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.9;position:relative}
+  .ref-hero .code{font-family:var(--font-display);font-size:38px;font-weight:800;letter-spacing:.16em;line-height:1.1;position:relative}
+  .ref-hero p{font-size:12.5px;font-weight:600;opacity:.94;position:relative;margin-top:6px}
+  .qr-wrap{display:grid;place-items:center;padding:18px;background:#fff;border-radius:var(--r-md);border:1px solid var(--hairline)}
+  .qr-wrap svg{width:min(230px,64vw);height:auto}
+  .lvl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .lvl{padding:16px 8px;border-radius:var(--r-md);text-align:center;color:#fff}
+  .lvl:nth-child(1){background:var(--g-blue)}
+  .lvl:nth-child(2){background:var(--g-pink)}
+  .lvl:nth-child(3){background:var(--g-green)}
+  .lvl b{font-family:var(--font-display);font-size:24px;font-weight:800;display:block;line-height:1}
+  .lvl span{font-size:10.5px;font-weight:800;letter-spacing:.08em;opacity:.9}
+  .share-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+</style>
+</head>
+<body data-page="refer">
+<div class="boot" id="boot"><div class="boot-in">
+  <div class="boot-ring"><span class="crest-mark"><svg viewBox="0 0 40 40"><path d="M20 4 L34 13 V36 H6 V13 Z" fill="none" stroke="#fff" stroke-width="2.4"/><rect x="12" y="19" width="6" height="6" fill="#FFD9EC"/><rect x="22" y="19" width="6" height="6" fill="#fff"/></svg></span></div>
+  <div class="boot-txt">Pinnacle</div>
+</div></div>
+
+<div class="app">
+  <header id="hdr"></header>
+  <main class="main">
+    <div class="rise rise-1" style="margin-bottom:16px">
+      <span style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--pink);display:block">Grow your network</span>
+      <h1>Refer &amp; Earn</h1>
+    </div>
+
+    <div class="ref-hero rise rise-2">
+      <div class="k">Your invitation code</div>
+      <div class="code" id="code">—</div>
+      <p>Share your link. You earn on three levels every time someone in your network funds their account.</p>
+    </div>
+
+    <div class="card rise rise-3" style="margin-bottom:16px">
+      <h3 style="margin-bottom:12px">Your referral link</h3>
+      <div class="ref-box">
+        <input id="link" readonly value="">
+        <button class="btn btn--primary btn--sm" type="button" id="copyLink">Copy</button>
+      </div>
+      <div class="share-row">
+        <button class="btn btn--blue btn--sm" type="button" id="shareBtn">Share link</button>
+        <a class="btn btn--green btn--sm" id="waShare" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+
+    <div class="card rise rise-4" style="margin-bottom:16px">
+      <h3 style="margin-bottom:12px">Scan to join</h3>
+      <div class="qr-wrap" id="qr"></div>
+      <div class="share-row">
+        <button class="btn btn--ghost btn--sm" type="button" id="qrPng">Download PNG</button>
+        <button class="btn btn--ghost btn--sm" type="button" id="qrSvg">Download SVG</button>
+      </div>
+    </div>
+
+    <div class="card rise rise-5" style="margin-bottom:16px">
+      <h3 style="margin-bottom:12px">Commission structure</h3>
+      <div class="lvl-grid" id="levels"></div>
+      <p class="c-muted" style="font-size:12px;font-weight:600;margin-top:12px">Commission is paid automatically the moment a deposit is approved for anyone in your level 1, 2 or 3 network.</p>
+    </div>
+
+    <div class="card rise rise-6" style="margin-bottom:16px">
+      <h3 style="margin-bottom:6px">Your earnings</h3>
+      <div class="sum-grid" id="earn" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0"></div>
+      <div class="rows" id="comm"></div>
+    </div>
+
+    <a class="btn btn--primary btn--block rise rise-6" href="team.html">View my team</a>
+  </main>
+  <nav id="nav"></nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/actions.js"></script>
+<script src="assets/js/qr.js"></script>
+<script src="assets/js/network.js"></script>
+</body>
+</html>
