@@ -1,0 +1,171 @@
+/* ============================================================
+   PINNACLE APARTMENTS — Theme
+   Palette: White · Blue · Pink · Red · Green
+   ============================================================ */
+
+:root{
+  /* ---- Blue (dominant) ---- */
+  --blue-deep:#123A8F;
+  --blue:#1F6FEB;
+  --blue-bright:#3D9BFF;
+  --blue-tint:#E8F1FE;
+  --blue-tint-2:#D3E5FD;
+
+  /* ---- Pink ---- */
+  --pink-deep:#C2186B;
+  --pink:#EC2E86;
+  --pink-bright:#FF6FB0;
+  --pink-tint:#FDE9F3;
+
+  /* ---- Red ---- */
+  --red-deep:#B3121B;
+  --red:#E23B33;
+  --red-bright:#FF6A5E;
+  --red-tint:#FDEAE8;
+
+  /* ---- Green ---- */
+  --green-deep:#0B7A4B;
+  --green:#14A867;
+  --green-bright:#35D68C;
+  --green-tint:#E6F7EF;
+
+  /* ---- White / cool neutrals ---- */
+  --ground:#F4F7FC;
+  --surface:#FFFFFF;
+  --surface-2:#FAFCFF;
+  --hairline:#E3EAF5;
+  --hairline-2:#CFDCEE;
+  --body:#16233D;
+  --muted:#5D6B85;
+  --muted-2:#8794AB;
+  --scrim:rgba(11,22,44,.55);
+
+  /* ---- Gradient pairs ---- */
+  --g-cta:linear-gradient(100deg,#EC2E86 0%,#B431C4 46%,#1F6FEB 100%);
+  --g-blue:linear-gradient(140deg,#3D9BFF 0%,#1F6FEB 52%,#123A8F 100%);
+  --g-pink:linear-gradient(140deg,#FF6FB0 0%,#EC2E86 55%,#C2186B 100%);
+  --g-red:linear-gradient(140deg,#FF6A5E 0%,#E23B33 55%,#B3121B 100%);
+  --g-green:linear-gradient(140deg,#35D68C 0%,#14A867 55%,#0B7A4B 100%);
+  --g-money:linear-gradient(120deg,#123A8F 0%,#1F6FEB 55%,#3D9BFF 100%);
+  --g-hero:linear-gradient(155deg,#123A8F 0%,#1F6FEB 40%,#EC2E86 100%);
+  --g-gift:linear-gradient(140deg,#FF6FB0,#C2186B);
+
+  /* ---- Elevation ---- */
+  --sh-1:0 1px 2px rgba(22,35,61,.05), 0 2px 8px rgba(22,35,61,.05);
+  --sh-2:0 2px 6px rgba(22,35,61,.06), 0 10px 26px rgba(22,35,61,.08);
+  --sh-3:0 8px 20px rgba(22,35,61,.10), 0 24px 60px rgba(22,35,61,.14);
+  --sh-blue:0 8px 22px rgba(31,111,235,.28);
+  --sh-pink:0 8px 22px rgba(236,46,134,.30);
+  --sh-green:0 8px 22px rgba(20,168,103,.26);
+  --sh-red:0 8px 22px rgba(226,59,51,.26);
+
+  /* ---- Radii ---- */
+  --r-xs:8px; --r-sm:12px; --r-md:16px; --r-lg:22px; --r-xl:28px; --r-pill:999px;
+
+  /* ---- Type ---- */
+  --font-display:'Plus Jakarta Sans','Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-body:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+
+  /* ---- Metrics ---- */
+  --header-h:64px;
+  --nav-h:74px;
+  --shell-max:1180px;
+  --gutter:18px;
+
+  /* ---- Motion ---- */
+  --e-out:cubic-bezier(.22,.9,.28,1);
+  --e-spring:cubic-bezier(.34,1.56,.5,1);
+  --t-fast:.16s; --t-mid:.3s; --t-slow:.55s;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+*{margin:0;padding:0}
+
+html{
+  -webkit-text-size-adjust:100%;
+  scroll-behavior:smooth;
+  scroll-padding-top:calc(var(--header-h) + 20px);
+}
+
+body{
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.55;
+  color:var(--body);
+  background:var(--ground);
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  font-variant-numeric:tabular-nums;
+}
+
+h1,h2,h3,h4,h5{font-family:var(--font-display);font-weight:800;line-height:1.18;letter-spacing:-.02em;color:var(--body)}
+h1{font-size:clamp(26px,5.4vw,38px)}
+h2{font-size:clamp(21px,4vw,27px)}
+h3{font-size:18px}
+h4{font-size:15px}
+a{color:var(--blue);text-decoration:none}
+a:hover{color:var(--pink)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+img,svg{display:block;max-width:100%}
+ul,ol{list-style:none}
+:focus-visible{outline:3px solid var(--blue-bright);outline-offset:2px;border-radius:6px}
+::selection{background:var(--pink);color:#fff}
+
+/* ---------- Ambient field ---------- */
+.field{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.field-mesh{
+  position:absolute;inset:-20%;
+  background:
+    radial-gradient(38% 34% at 12% 8%, rgba(61,155,255,.30), transparent 62%),
+    radial-gradient(34% 30% at 88% 4%, rgba(236,46,134,.24), transparent 64%),
+    radial-gradient(40% 36% at 78% 88%, rgba(20,168,103,.20), transparent 66%),
+    radial-gradient(30% 28% at 6% 76%, rgba(226,59,51,.16), transparent 66%);
+  filter:blur(10px);
+  animation:meshDrift 26s var(--e-out) infinite alternate;
+}
+@keyframes meshDrift{
+  0%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(-2.5%,2%,0) scale(1.06)}
+  100%{transform:translate3d(2%,-2.5%,0) scale(1.03)}
+}
+.field-grid{
+  position:absolute;inset:0;opacity:.5;
+  background-image:
+    linear-gradient(to right, rgba(31,111,235,.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(31,111,235,.07) 1px, transparent 1px);
+  background-size:46px 46px;
+  mask-image:radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 78%);
+  -webkit-mask-image:radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 78%);
+}
+.field-grain{
+  position:absolute;inset:0;opacity:.32;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E");
+}
+
+/* ---------- Scrollbars (in-artifact language) ---------- */
+*{scrollbar-width:thin;scrollbar-color:var(--blue) var(--blue-tint)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--blue-tint);border-radius:var(--r-pill)}
+::-webkit-scrollbar-thumb{
+  background:var(--g-blue);border-radius:var(--r-pill);
+  border:2px solid var(--blue-tint);
+}
+::-webkit-scrollbar-thumb:hover{background:var(--g-pink)}
+::-webkit-scrollbar-corner{background:var(--blue-tint)}
+
+/* ---------- Utilities ---------- */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.num{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.dsp{font-family:var(--font-display)}
+.c-blue{color:var(--blue)} .c-pink{color:var(--pink)} .c-red{color:var(--red)}
+.c-green{color:var(--green)} .c-muted{color:var(--muted)}
+.grad-text{background:var(--g-cta);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hide{display:none !important}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+  html{scroll-behavior:auto}
+}
