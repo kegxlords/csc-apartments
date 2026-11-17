@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payout Cards · Pinnacle Apartments</title>
+<meta name="theme-color" content="#123A8F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/theme.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<style>
+  .card-grid{display:grid;gap:16px}
+  @media(min-width:700px){.card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .card-actions{display:flex;gap:8px;margin-top:10px}
+</style>
+</head>
+<body data-page="bankcard">
+<div class="boot" id="boot"><div class="boot-in">
+  <div class="boot-ring"><span class="crest-mark"><svg viewBox="0 0 40 40"><path d="M20 4 L34 13 V36 H6 V13 Z" fill="none" stroke="#fff" stroke-width="2.4"/><rect x="12" y="19" width="6" height="6" fill="#FFD9EC"/><rect x="22" y="19" width="6" height="6" fill="#fff"/></svg></span></div>
+  <div class="boot-txt">Pinnacle</div>
+</div></div>
+
+<div class="app">
+  <header id="hdr"></header>
+  <main class="main">
+    <div class="rise rise-1" style="margin-bottom:16px">
+      <span style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--pink);display:block">Payout destination</span>
+      <h1>Bank Cards</h1>
+      <p class="c-muted" style="font-size:13.5px;font-weight:600;margin-top:6px">Save your account once. Every withdrawal uses your default card.</p>
+    </div>
+
+    <button class="btn btn--blue btn--block rise rise-2" type="button" id="add" style="margin-bottom:18px">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+      Add payout card
+    </button>
+
+    <div class="card-grid rise rise-3" id="list"></div>
+
+    <div class="card rise rise-4" style="margin-top:18px">
+      <h3 style="margin-bottom:10px">How payouts work</h3>
+      <div class="rows">
+        <div class="row"><span class="row-ic row-ic--rent">${''}</span><div class="row-main"><b>One default card</b><span>Mark any card as default and it is preselected at withdrawal.</span></div></div>
+        <div class="row"><span class="row-ic row-ic--in"></span><div class="row-main"><b>Snapshot on request</b><span>Each withdrawal records the card used, so later edits never rewrite history.</span></div></div>
+        <div class="row"><span class="row-ic row-ic--bonus"></span><div class="row-main"><b>Remove anytime</b><span>Deleting a card does not affect withdrawals already in review.</span></div></div>
+      </div>
+    </div>
+  </main>
+  <nav id="nav"></nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/actions.js"></script>
+<script src="assets/js/bankcard.js"></script>
+</body>
+</html>
