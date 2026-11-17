@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Team · Pinnacle Apartments</title>
+<meta name="theme-color" content="#1F6FEB">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/theme.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<style>
+  .tot-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+  @media(min-width:640px){.tot-grid{grid-template-columns:repeat(4,1fr)}}
+  .tot{padding:16px 10px;border-radius:var(--r-md);text-align:center;background:var(--surface);border:1px solid var(--hairline);box-shadow:var(--sh-1)}
+  .tot .v{font-family:var(--font-display);font-size:24px;font-weight:800;letter-spacing:-.03em}
+  .tot .k{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);margin-top:2px}
+  .tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-md);padding:5px;margin-bottom:16px;box-shadow:var(--sh-1)}
+  .tabs button{flex:1;padding:11px 6px;border-radius:var(--r-sm);font-family:var(--font-display);font-size:12.5px;font-weight:800;color:var(--muted);transition:all var(--t-fast)}
+  .tabs button.on{background:var(--g-blue);color:#fff;box-shadow:var(--sh-blue)}
+  .member{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--hairline)}
+  .member:last-child{border-bottom:0}
+  .avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:15px;color:#fff;flex-shrink:0}
+  .toolbar{display:flex;gap:9px;margin-bottom:12px}
+  .toolbar .input-wrap{flex:1}
+</style>
+</head>
+<body data-page="team">
+<div class="boot" id="boot"><div class="boot-in">
+  <div class="boot-ring"><span class="crest-mark"><svg viewBox="0 0 40 40"><path d="M20 4 L34 13 V36 H6 V13 Z" fill="none" stroke="#fff" stroke-width="2.4"/><rect x="12" y="19" width="6" height="6" fill="#FFD9EC"/><rect x="22" y="19" width="6" height="6" fill="#fff"/></svg></span></div>
+  <div class="boot-txt">Pinnacle</div>
+</div></div>
+
+<div class="app">
+  <header id="hdr"></header>
+  <main class="main">
+    <div class="rise rise-1" style="margin-bottom:16px">
+      <span style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--pink);display:block">Three-level network</span>
+      <h1>My Team</h1>
+    </div>
+
+    <div class="tot-grid rise rise-2" id="totals"></div>
+
+    <div class="card rise rise-3" style="margin-bottom:16px">
+      <div class="ref-box">
+        <input id="link" readonly value="">
+        <button class="btn btn--primary btn--sm" type="button" id="copy">Copy</button>
+      </div>
+      <a class="btn btn--ghost btn--sm btn--block" href="refer.html" style="margin-top:10px">Referral tools &amp; QR</a>
+    </div>
+
+    <div class="tabs rise rise-4" id="tabs"></div>
+
+    <div class="toolbar rise rise-4">
+      <div class="input-wrap">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input class="input" id="search" placeholder="Search members">
+      </div>
+      <select class="input" id="sort" style="max-width:130px;background:var(--surface);border:1.5px solid var(--hairline);border-radius:var(--r-md);padding:0 12px;font-weight:700">
+        <option value="new">Newest</option>
+        <option value="funded">Top funded</option>
+        <option value="name">Name A–Z</option>
+      </select>
+    </div>
+
+    <div class="card rise rise-5"><div id="list"></div></div>
+  </main>
+  <nav id="nav"></nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/actions.js"></script>
+<script src="assets/js/qr.js"></script>
+<script src="assets/js/network.js"></script>
+</body>
+</html>
