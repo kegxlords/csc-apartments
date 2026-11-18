@@ -67,9 +67,10 @@ export default async function handler(req, res) {
       if (view === 'queue') {
         const type = req.query?.type === 'withdrawal' ? 'withdrawal' : 'deposit';
         const status = req.query?.status || 'pending';
-        let q = sb.from('transactions').select('*, profiles(full_name,email)').eq('type', type).order('created_at', { ascending: false }).limit(300);
+        let q = sb.from('transactions').select('*, profiles!transactions_user_id_fkey(full_name,email)').eq('type', type).order('created_at', { ascending: false }).limit(300);
         if (status !== 'all') q = q.eq('status', status);
-        const { data } = await q;
+        const { data, error } = await q;
+        if (error) throw new Error(error.message);
         return ok(res, { transactions: data || [] });
       }
 
