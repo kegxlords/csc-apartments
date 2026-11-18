@@ -111,8 +111,8 @@
         <div class="field-row"><label class="label" for="acDepAmt">Amount (₦)</label>
           <div class="input-wrap">${icon('wallet')}<input class="input" id="acDepAmt" type="number" inputmode="numeric" min="${s.min_deposit}" max="${s.max_deposit}" placeholder="${s.min_deposit}" required></div>
           <p class="hint">Min ${naira(s.min_deposit)} · Max ${naira(s.max_deposit)}</p></div>
-        <div class="field-row"><label class="label" for="acDepRef">Transfer reference <span class="opt">(optional)</span></label>
-          <div class="input-wrap">${icon('ticket')}<input class="input" id="acDepRef" placeholder="Session ID / narration"></div></div>
+        <div class="field-row"><label class="label" for="acDepSender">Sender name <span class="opt">(optional)</span></label>
+          <div class="input-wrap">${icon('user')}<input class="input" id="acDepSender" maxlength="80" autocomplete="name" placeholder="Name used to send the transfer"></div></div>
         <button class="btn btn--blue btn--block" type="submit">Submit deposit</button>
       </form>`, 'sheet');
     wireCopy(l);
@@ -121,7 +121,7 @@
       const btn = e.target.querySelector('button[type=submit]'), old = btn.innerHTML;
       btn.disabled = true; btn.innerHTML = '<i class="spin"></i> Submitting…';
       try {
-        const r = await Store.deposit(l.querySelector('#acDepAmt').value, l.querySelector('#acDepRef').value.trim());
+        const r = await Store.deposit(l.querySelector('#acDepAmt').value, l.querySelector('#acDepSender').value.trim());
         closeLayer();
         toast('Deposit submitted', 'ok', { sub: 'Reference ' + r.reference, undo: () => { Store.undo(); if (onDone) onDone(); toast('Deposit withdrawn', 'info'); } });
         if (onDone) onDone();

@@ -257,8 +257,7 @@
         <input id="gLink" readonly value="${esc(link)}">
         <button class="btn btn--primary btn--sm" type="button" id="gCopy">Copy</button>
       </div>
-      <a class="btn btn--ghost btn--block btn--sm" style="margin-top:10px" href="refer.html">Open referral tools &amp; QR</a>
-      <a class="btn btn--green btn--block" style="margin-top:10px" href="${esc(s.whatsapp_link)}" target="_blank" rel="noopener">${icon('wa')} Get codes in the group</a>`, 'sheet');
+      <a class="btn btn--ghost btn--block btn--sm" style="margin-top:10px" href="refer.html">Open referral tools &amp; QR</a>`, 'sheet');
     l.querySelector('#gCopy').addEventListener('click', () => {
       navigator.clipboard.writeText(link)
         .then(() => toast('Referral link copied', 'ok'))

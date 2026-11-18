@@ -502,9 +502,10 @@
       save(); return {};
     },
 
-    async deposit(amount, reference) {
+    async deposit(amount, senderName) {
+      senderName = String(senderName || '').trim().slice(0, 80);
       if (LIVE) {
-        const result = await liveRequest('/api/wallet', 'POST', { action: 'deposit', amount: Number(amount), reference });
+        const result = await liveRequest('/api/wallet', 'POST', { action: 'deposit', amount: Number(amount), sender_name: senderName });
         await refreshLive();
         return { reference: result.reference };
       }
@@ -514,7 +515,7 @@
       if (amount > s.max_deposit) throw new Error('Maximum deposit is ₦' + s.max_deposit.toLocaleString() + '.');
       snapshot('Deposit request');
       const ref = 'DEP-' + code6();
-      db.tx.push({ id: uid(), user_id: m.id, type: 'deposit', amount, fee: 0, net_amount: amount, description: 'Bank transfer deposit' + (reference ? ' · ' + reference : ''), reference: ref, status: 'pending', created_at: now() });
+      db.tx.push({ id: uid(), user_id: m.id, type: 'deposit', amount, fee: 0, net_amount: amount, description: 'Bank transfer deposit' + (senderName ? ' · Sender: ' + senderName : ''), reference: ref, status: 'pending', created_at: now() });
       save();
       return { reference: ref };
     },
