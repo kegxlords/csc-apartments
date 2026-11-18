@@ -19,6 +19,9 @@
   let currentMemberId = null;
   let currentMemberData = null;
   let currentPreviewId = null;
+  let currentPreviewToken = null;
+  let queueStatus = 'pending';
+  let queueSearch = '';
 
   function message(title, detail, retry) {
     VIEW.innerHTML = `<section class="panel" role="alert">
@@ -109,7 +112,8 @@
 
   function statusTag(status) {
     const cls = status === 'completed' ? 'live' : status === 'pending' ? 'pending' : 'out';
-    return `<span class="tag tag--${cls}">${esc(status || 'unknown')}</span>`;
+    const label = status === 'completed' ? 'successful' : status;
+    return `<span class="tag tag--${cls}">${esc(label || 'unknown')}</span>`;
   }
 
   async function loadUsers() {
@@ -154,7 +158,7 @@
       <div class="metrics">${metric('Available balance', naira(wallet.balance), 'm-blue')}${metric('Income balance', naira(wallet.income_balance), 'm-green')}${metric('Locked', naira(wallet.locked), 'm-pink')}${metric('Total funded', naira(p.total_funded), 'm-blue')}</div>
       <section class="panel"><div class="panel-head"><h3>Account</h3><span>${p.is_admin ? '<span class="tag tag--soon">Admin</span>' : ''} ${p.is_active === false ? '<span class="tag tag--out">Suspended</span>' : '<span class="tag tag--live">Active</span>'}</span></div>
         <div class="kv-grid"><div class="kv"><span class="k">Email</span><span class="v">${esc(p.email || '—')}</span></div><div class="kv"><span class="k">Phone</span><span class="v">${esc(p.phone || '—')}</span></div><div class="kv"><span class="k">Referral code</span><span class="v">${esc(p.referral_code || '—')}</span></div><div class="kv"><span class="k">Joined</span><span class="v">${date(p.created_at)}</span></div></div>
-        <div class="view-actions" style="margin-top:14px"><button class="btn btn--blue btn--sm" data-act="preview-member" data-id="${esc(p.id)}">View as member (read-only)</button><button class="btn btn--green btn--sm" data-act="adjust" data-id="${esc(p.id)}" data-direction="credit">Credit wallet</button><button class="btn btn--red btn--sm" data-act="adjust" data-id="${esc(p.id)}" data-direction="debit">Debit wallet</button><button class="btn btn--${p.is_active === false ? 'green' : 'ghost'} btn--sm" data-act="ban" data-id="${esc(p.id)}" data-active="${p.is_active !== false}">${p.is_active === false ? 'Reinstate' : 'Suspend'}</button></div></section>
+        <div class="view-actions" style="margin-top:14px"><button class="btn btn--blue btn--sm" data-act="preview-member" data-id="${esc(p.id)}">View as member</button><button class="btn btn--green btn--sm" data-act="grant-package" data-id="${esc(p.id)}">Grant package</button><button class="btn btn--green btn--sm" data-act="adjust" data-id="${esc(p.id)}" data-direction="credit">Credit wallet</button><button class="btn btn--red btn--sm" data-act="adjust" data-id="${esc(p.id)}" data-direction="debit">Debit wallet</button><button class="btn btn--${p.is_active === false ? 'green' : 'ghost'} btn--sm" data-act="ban" data-id="${esc(p.id)}" data-active="${p.is_active !== false}">${p.is_active === false ? 'Reinstate' : 'Suspend'}</button></div></section>
         <section class="panel"><div class="panel-head"><h3>Recent transactions</h3></div>
         ${tx.length ? `<div class="table-scroll"><table class="dt"><thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead><tbody>${tx.slice(0, 50).map(t => `<tr><td>${date(t.created_at)}</td><td>${esc(t.description || '')}</td><td>${esc(t.type)}</td><td class="money">${naira(t.amount)}</td><td>${statusTag(t.status)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="c-muted">No transactions.</p>'}</section>`;
   }
@@ -189,7 +193,10 @@
       currentMemberData = await request('member', 'GET', null, { id });
       currentMemberId = id;
     }
-    await post('impersonate', { user_id: id });
+    const session = await post('impersonate', { user_id: id });
+    currentPreviewToken = session.impersonation?.token || null;
+    if (!currentPreviewToken) throw new Error('The server did not return a preview session.');
+    currentMemberData = await request('member', 'GET', null, { id, impersonation_token: currentPreviewToken });
     currentPreviewId = id;
     const p = currentMemberData.profile || {};
     const name = $('#impName');
@@ -203,9 +210,11 @@
     const id = currentPreviewId;
     if (!id) return;
     currentPreviewId = null;
+    const token = currentPreviewToken;
+    currentPreviewToken = null;
     $('#impBar')?.classList.add('hide');
     try {
-      await post('end_impersonation', { user_id: id });
+      await post('end_impersonation', { user_id: id, token });
     } catch (err) {
       UI.toast('Preview closed, but its exit audit could not be saved: ' + err.message, 'err');
     }
@@ -213,15 +222,33 @@
   }
 
   async function loadQueue(type) {
-    const data = await request('queue', 'GET', null, { type, status: 'pending' });
+    const data = await request('queue', 'GET', null, { type, status: queueStatus });
     const rows = data.transactions || [];
-    const title = type === 'deposit' ? 'Deposits awaiting review' : 'Withdrawals awaiting review';
+    const title = type === 'deposit' ? 'Deposits' : 'Withdrawals';
+    const visibleRows = queueSearch ? rows.filter(t => `${t.reference || ''} ${t.description || ''} ${t.profiles?.full_name || ''} ${t.profiles?.email || ''}`.toLowerCase().includes(queueSearch)) : rows;
     VIEW.innerHTML = `<div class="view-head"><div><span class="eyebrow">Review queue</span><h1>${type === 'deposit' ? 'Deposits' : 'Withdrawals'}</h1></div>
       <button class="btn btn--ghost btn--sm" data-act="refresh">Refresh</button></div>
-      <section class="panel"><div class="panel-head"><h3>${title} <span class="tag tag--pending">${rows.length}</span></h3></div>
-      ${rows.length ? `<div class="table-scroll"><table class="dt"><thead><tr><th>Member</th><th>Reference</th><th>Amount</th><th>Created</th><th>Details</th><th></th></tr></thead><tbody>
-        ${rows.map(t => { const p = Array.isArray(t.profiles) ? t.profiles[0] : (t.profiles || {}); return `<tr><td><b>${esc(p.full_name || 'Member')}</b><br><span class="c-muted">${esc(p.email || '')}</span></td><td>${esc(t.reference || '')}</td><td class="money">${naira(t.amount)}${type === 'withdrawal' && t.fee ? `<br><small class="c-muted">Net ${naira(t.net_amount)}</small>` : ''}</td><td>${date(t.created_at)}</td><td>${type === 'withdrawal' ? `${esc(t.bank_name || '')}<br>${esc(t.account_number || '')}` : esc(t.description || '')}</td><td><div class="acts"><button class="icon-act ok" title="Approve" aria-label="Approve" data-act="approve" data-id="${esc(t.id)}" data-type="${type}">✓</button><button class="icon-act no" title="Reject" aria-label="Reject" data-act="reject" data-id="${esc(t.id)}" data-type="${type}">×</button></div></td></tr>`; }).join('')}
-      </tbody></table></div>` : '<p class="c-muted">Nothing is waiting for review.</p>'}</section>`;
+      <div class="toolbar"><div class="input-wrap"><input class="input" id="queueSearch" type="search" placeholder="Search member, email or reference" value="${esc(queueSearch)}"></div>
+        <select class="input" id="queueStatus" aria-label="Transaction status"><option value="pending" ${queueStatus === 'pending' ? 'selected' : ''}>Pending</option><option value="completed" ${queueStatus === 'completed' ? 'selected' : ''}>Successful</option><option value="rejected" ${queueStatus === 'rejected' ? 'selected' : ''}>Rejected</option><option value="all" ${queueStatus === 'all' ? 'selected' : ''}>All statuses</option></select></div>
+      <section class="panel"><div class="panel-head"><h3>${title} <span class="tag tag--${queueStatus === 'completed' ? 'live' : queueStatus === 'rejected' ? 'out' : 'pending'}">${visibleRows.length}</span></h3></div>
+      ${visibleRows.length ? `<div class="table-scroll"><table class="dt"><thead><tr><th>Member</th><th>Reference</th><th>Amount</th><th>Status</th><th>Created</th><th>Details</th><th></th></tr></thead><tbody>
+        ${visibleRows.map(t => { const p = Array.isArray(t.profiles) ? t.profiles[0] : (t.profiles || {}); return `<tr><td><b>${esc(p.full_name || 'Member')}</b><br><span class="c-muted">${esc(p.email || '')}</span></td><td>${esc(t.reference || '')}</td><td class="money">${naira(t.amount)}${type === 'withdrawal' && t.fee ? `<br><small class="c-muted">Net ${naira(t.net_amount)}</small>` : ''}</td><td>${statusTag(t.status)}</td><td>${date(t.created_at)}</td><td>${type === 'withdrawal' ? `${esc(t.bank_name || '')}<br>${esc(t.account_number || '')}` : esc(t.description || '')}</td><td><div class="acts">${t.status === 'pending' ? `<button class="icon-act ok" title="Approve" aria-label="Approve" data-act="approve" data-id="${esc(t.id)}" data-type="${type}">✓</button><button class="icon-act no" title="Reject" aria-label="Reject" data-act="reject" data-id="${esc(t.id)}" data-type="${type}">×</button>` : '—'}</div></td></tr>`; }).join('')}
+      </tbody></table></div>` : '<p class="c-muted">No matching transactions.</p>'}</section>`;
+    $('#queueSearch')?.addEventListener('input', e => { queueSearch = e.target.value.trim().toLowerCase(); loadQueue(type); });
+    $('#queueStatus')?.addEventListener('change', e => { queueStatus = e.target.value; queueSearch = ''; loadQueue(type); });
+  }
+
+  async function grantPackage(id) {
+    const data = await request('units');
+    const units = data.units || [];
+    if (!units.length) throw new Error('No packages are configured.');
+    const menu = units.map((u, i) => `${i + 1}. ${u.name} — ${naira(u.daily_yield)}/day · ${u.duration_days} days`).join('\n');
+    const choice = window.prompt(`Choose a package to grant:\n\n${menu}\n\nEnter the package number:`);
+    if (choice == null) return;
+    const unit = units[Number(choice) - 1];
+    if (!unit) throw new Error('Choose a valid package number.');
+    if (!window.confirm(`Grant ${unit.name} to this member?`)) return;
+    await refreshAfter('grant_package', { user_id: id, unit_id: unit.id }, 'Package granted.');
   }
 
   async function loadUnits() {
@@ -318,6 +345,7 @@
       if (action === 'refresh' || action === 'retry') { if (currentPreviewId && currentMemberData) renderMemberPreview(currentMemberData); else await render(tab); return; }
       if (action === 'member') { await loadMember(el.dataset.id); return; }
       if (action === 'preview-member') { await beginPreview(el.dataset.id); return; }
+      if (action === 'grant-package') { await grantPackage(el.dataset.id); return; }
       if (action === 'exit-imp') { await endPreview(true); return; }
       if (action === 'sweep') {
         if (!window.confirm('Run the income sweep now? This will credit any due income drops.')) return;

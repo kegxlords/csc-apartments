@@ -1,4 +1,8 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { admin, requireAdmin, ok, fail, body, num } from './_core.js';
+
+const hashToken = token => createHash('sha256').update(String(token)).digest('hex');
+const queueStatuses = new Set(['all', 'pending', 'completed', 'rejected']);
 
 export default async function handler(req, res) {
   const sb = admin();
@@ -44,6 +48,14 @@ export default async function handler(req, res) {
       if (view === 'member') {
         const id = req.query?.id;
         if (!id) throw new Error('Member id required.');
+        if (req.query?.impersonation_token) {
+          const { data: session, error } = await sb.from('admin_impersonation_sessions')
+            .select('id').eq('token_hash', hashToken(req.query.impersonation_token))
+            .eq('admin_id', actor.id).eq('user_id', id).is('ended_at', null)
+            .gt('expires_at', new Date().toISOString()).maybeSingle();
+          if (error) throw new Error(error.message);
+          if (!session) throw new Error('This member preview session has expired.');
+        }
         const cols = 'id,full_name,created_at,has_funded,total_funded';
         const [p, w, ls, tx, cards, l1, l2, l3, comm, ci] = await Promise.all([
           sb.from('profiles').select('*').eq('id', id).single(),
@@ -66,7 +78,8 @@ export default async function handler(req, res) {
 
       if (view === 'queue') {
         const type = req.query?.type === 'withdrawal' ? 'withdrawal' : 'deposit';
-        const status = req.query?.status || 'pending';
+        const requestedStatus = req.query?.status === 'successful' ? 'completed' : (req.query?.status || 'pending');
+        const status = queueStatuses.has(requestedStatus) ? requestedStatus : 'pending';
         let q = sb.from('transactions').select('*, profiles!transactions_user_id_fkey(full_name,email)').eq('type', type).order('created_at', { ascending: false }).limit(300);
         if (status !== 'all') q = q.eq('status', status);
         const { data, error } = await q;
@@ -122,8 +135,10 @@ export default async function handler(req, res) {
           return ok(res, { message: a === 'credit' ? 'Wallet topped up.' : 'Wallet deducted.' });
 
         case 'grant_lease':
+        case 'grant_package':
+          if (!p.user_id || !p.unit_id) throw new Error('Member and package are required.');
           await sb.rpc('admin_grant_lease', { p_admin: actor.id, p_user: p.user_id, p_unit: p.unit_id });
-          return ok(res, { message: 'Residence granted.' });
+          return ok(res, { message: 'Package granted.' });
 
         case 'ban':
           await sb.rpc('admin_set_ban', { p_admin: actor.id, p_user: p.user_id, p_active: false });
@@ -136,13 +151,27 @@ export default async function handler(req, res) {
         case 'impersonate':
           if (!p.user_id) throw new Error('Member id required.');
           {
+            const { data: target, error: targetError } = await sb.from('profiles').select('id').eq('id', p.user_id).maybeSingle();
+            if (targetError) throw new Error(targetError.message);
+            if (!target) throw new Error('Member not found.');
+            const token = randomBytes(32).toString('base64url');
+            const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+            const { error: sessionError } = await sb.from('admin_impersonation_sessions').insert({
+              token_hash: hashToken(token), admin_id: actor.id, user_id: p.user_id, expires_at: expiresAt
+            });
+            if (sessionError) throw new Error(sessionError.message);
             const { error } = await sb.rpc('admin_impersonate', { p_admin: actor.id, p_user: p.user_id });
             if (error) throw new Error(error.message);
+            return ok(res, { message: 'Member preview session opened and logged.', impersonation: { token, user_id: p.user_id, expires_at: expiresAt } });
           }
-          return ok(res, { message: 'Read-only member preview opened and logged.' });
 
         case 'end_impersonation': {
           if (!p.user_id) throw new Error('Member id required.');
+          if (p.token) {
+            const { error: sessionError } = await sb.from('admin_impersonation_sessions').update({ ended_at: new Date().toISOString() })
+              .eq('token_hash', hashToken(p.token)).eq('admin_id', actor.id).eq('user_id', p.user_id).is('ended_at', null);
+            if (sessionError) throw new Error(sessionError.message);
+          }
           const { error } = await sb.from('audit_log').insert({
             actor: actor.id, action: 'end_impersonation', target: p.user_id,
             meta: { at: new Date().toISOString() }
