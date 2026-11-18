@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — UI kit + shell + guard
+   CSC APARTMENTS — UI kit + shell + guard
    ============================================================ */
 (function () {
   'use strict';
@@ -172,7 +172,7 @@
     const impersonating = Store.impersonating && Store.impersonating();
     h.innerHTML = `<div class="header-in">
       ${back ? `<a class="back-btn" href="${back}" aria-label="Back">${icon('back')}</a>` : ''}
-      <a class="crest" href="dashboard.html">${crest()}<span class="crest-txt"><b>PINNACLE</b><i>Apartments</i></span></a>
+      <a class="crest" href="dashboard.html">${crest()}<span class="crest-txt"><b>CSC</b><i>Apartments</i></span></a>
       ${title ? `<span class="header-title">${esc(title)}</span>` : ''}
       <span class="header-spacer"></span>
       <button class="icon-btn" id="hdrCare" aria-label="Customer care">${icon('headset')}</button>

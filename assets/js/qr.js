@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — self-contained QR encoder (byte mode, ECC L)
+   CSC APARTMENTS — self-contained QR encoder (byte mode, ECC L)
    No dependency, no network. Renders SVG + exports PNG.
    ============================================================ */
 (function () {
@@ -254,7 +254,7 @@
       cv.toBlob(b => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(b);
-        a.download = filename || 'pinnacle-referral-qr.png';
+        a.download = filename || 'csc-referral-qr.png';
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 1500);
       });
@@ -267,7 +267,7 @@
     const blob = new Blob([svg(text)], { type: 'image/svg+xml' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = filename || 'pinnacle-referral-qr.svg';
+    a.download = filename || 'csc-referral-qr.svg';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1500);
   }

@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Deposit & Withdraw pages
+   CSC APARTMENTS — Deposit & Withdraw pages
    ============================================================ */
 (function () {
   'use strict';

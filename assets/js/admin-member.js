@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Member dossier controller
+   CSC APARTMENTS — Member dossier controller
    ============================================================ */
 (function () {
   'use strict';
@@ -114,7 +114,7 @@
     const csv = rows.map(r => r.map(c => `"${String(c == null ? '' : c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    a.download = 'pinnacle-member-' + m.profile.referral_code + '.csv';
+    a.download = 'csc-member-' + m.profile.referral_code + '.csv';
     a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1500);
     toast('Member ledger exported', 'ok');
   }

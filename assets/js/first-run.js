@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — first-run notice on the login page
+   CSC APARTMENTS — first-run notice on the login page
    Shows only when the store holds zero accounts.
    ============================================================ */
 (function () {

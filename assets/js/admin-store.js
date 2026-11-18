@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Console data engine (production)
+   CSC APARTMENTS — Console data engine (production)
    Shares the member store key. No seeding, no demo records.
    ============================================================ */
 (function () {

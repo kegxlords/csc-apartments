@@ -1,5 +1,5 @@
 -- ============================================================
--- PINNACLE APARTMENTS — complete schema, RLS, RPCs
+-- CSC APARTMENTS — complete schema, RLS, RPCs
 -- Idempotent: safe to re-run at any time.
 -- ============================================================
 create extension if not exists "pgcrypto";

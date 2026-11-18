@@ -1,6 +1,6 @@
 # Website photo sources
 
-These locally hosted WebP images are illustrative stock photos, not verified photographs of Pinnacle's actual residences. Replace them with property-approved photos if available.
+These locally hosted WebP images are illustrative stock photos, not verified photographs of CSC's actual residences. Replace them with property-approved photos if available.
 
 The Pexels photos are used under the Pexels License (free use, including on websites; attribution is not required): https://www.pexels.com/license/
 

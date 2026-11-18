@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Support centre
+   CSC APARTMENTS — Support centre
    ============================================================ */
 (function () {
   'use strict';

@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Operations console controller
+   CSC APARTMENTS — Operations console controller
    Reads and writes through the authenticated /api/admin endpoint.
    ============================================================ */
 (function () {

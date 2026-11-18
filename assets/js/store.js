@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Data engine (production, no demo data)
+   CSC APARTMENTS — Data engine (production, no demo data)
    Starts empty. Every record is created by real member activity.
    ============================================================ */
 (function () {
@@ -40,7 +40,7 @@
   function banner(i) {
     const sets = [
       ['#123A8F', '#1F6FEB', '#3D9BFF', 'Riverside Tower', 'Waterfront residences · Lekki Phase 1'],
-      ['#C2186B', '#EC2E86', '#FF6FB0', 'The Pinnacle Collection', 'Six tiers of managed rental income'],
+      ['#C2186B', '#EC2E86', '#FF6FB0', 'The CSC Collection', 'Six tiers of managed rental income'],
       ['#0B7A4B', '#14A867', '#35D68C', 'Income Every 24 Hours', 'Automatic drops, tracked to the second']
     ];
     const c = sets[i % sets.length];

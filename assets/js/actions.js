@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — shared money & reward flows
+   CSC APARTMENTS — shared money & reward flows
    Used by the dedicated pages and reachable from anywhere.
    ============================================================ */
 (function () {

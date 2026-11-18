@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Payout cards
+   CSC APARTMENTS — Payout cards
    ============================================================ */
 (function () {
   'use strict';

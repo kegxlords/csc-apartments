@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Daily attendance
+   CSC APARTMENTS — Daily attendance
    ============================================================ */
 (function () {
   'use strict';

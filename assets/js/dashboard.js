@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Member home
+   CSC APARTMENTS — Member home
    Banner · balance · 4 actions · lease catalogue only.
    Rented packages live on rents.html, not here.
    ============================================================ */
@@ -45,7 +45,7 @@
     if (!root) return;
     const copies = [
       ['Riverside Tower', 'Waterfront residences · Lekki Phase 1'],
-      ['The Pinnacle Collection', 'Six tiers of managed rental income'],
+      ['The CSC Collection', 'Six tiers of managed rental income'],
       ['Income Every 24 Hours', 'Automatic drops, tracked to the second']
     ];
     root.innerHTML = `

@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Rented residences
+   CSC APARTMENTS — Rented residences
    ============================================================ */
 (function () {
   'use strict';

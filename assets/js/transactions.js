@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Transaction ledger
+   CSC APARTMENTS — Transaction ledger
    ============================================================ */
 (function () {
   'use strict';
@@ -58,7 +58,7 @@
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    a.download = 'pinnacle-transactions.csv';
+    a.download = 'csc-transactions.csv';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1500);
     toast('Exported ' + tx.length + ' transactions', 'ok');

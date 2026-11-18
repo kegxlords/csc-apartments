@@ -1,5 +1,5 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Auth controller (production)
+   CSC APARTMENTS — Auth controller (production)
    login · register (captcha) · forgot · reset — no demo paths
    ============================================================ */
 (function () {
@@ -71,7 +71,7 @@
     const h = document.getElementById('hero'); if (!h) return;
     h.innerHTML = `<img class="auth-hero-img" src="${esc(window.PINNACLE.IMAGES.authHero)}" alt=""
         onerror="this.onerror=null;this.src='${Store.banner(0)}'">
-      <div class="auth-hero-badge">${UI.crest()}<b>PINNACLE APARTMENTS</b></div>`;
+      <div class="auth-hero-badge">${UI.crest()}<b>CSC APARTMENTS</b></div>`;
   }
   function eyes() {
     document.querySelectorAll('[data-eye]').forEach(btn => {
