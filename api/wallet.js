@@ -28,9 +28,10 @@ export default async function handler(req, res) {
         if (amount < min) throw new Error(`Minimum deposit is ₦${min.toLocaleString()}.`);
         if (amount > max) throw new Error(`Maximum deposit is ₦${max.toLocaleString()}.`);
         const reference = ref('DEP');
+        const senderName = String(b.sender_name || '').trim().slice(0, 80);
         const { data, error } = await sb.from('transactions').insert({
           user_id: u.id, type: 'deposit', amount, fee: 0, net_amount: amount,
-          description: 'Bank transfer deposit' + (b.reference ? ' · ' + String(b.reference).slice(0, 80) : ''),
+          description: 'Bank transfer deposit' + (senderName ? ' · Sender: ' + senderName : ''),
           reference, status: 'pending'
         }).select().single();
         if (error) throw new Error(error.message);

@@ -57,7 +57,7 @@
       const btn = e.target.querySelector('button[type=submit]'), old = btn.innerHTML;
       btn.disabled = true; btn.innerHTML = '<i class="spin"></i> Submitting…';
       try {
-        const r = await Store.deposit(document.getElementById('amt').value, document.getElementById('ref').value.trim());
+        const r = await Store.deposit(document.getElementById('amt').value, document.getElementById('senderName').value.trim());
         a.show('Deposit submitted. Reference ' + r.reference + '. Our team will confirm shortly.', 'ok');
         toast('Deposit submitted', 'ok', { sub: 'Reference ' + r.reference, undo: () => { Store.undo(); paintBal(); recent('deposit', 'recent'); toast('Deposit withdrawn', 'info'); } });
         e.target.reset();
