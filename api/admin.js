@@ -133,8 +133,22 @@ export default async function handler(req, res) {
           return ok(res, { message: 'Member reinstated.' });
 
         case 'impersonate':
-          await sb.rpc('admin_impersonate', { p_admin: actor.id, p_user: p.user_id });
-          return ok(res, { message: 'Impersonation logged.' });
+          if (!p.user_id) throw new Error('Member id required.');
+          {
+            const { error } = await sb.rpc('admin_impersonate', { p_admin: actor.id, p_user: p.user_id });
+            if (error) throw new Error(error.message);
+          }
+          return ok(res, { message: 'Read-only member preview opened and logged.' });
+
+        case 'end_impersonation': {
+          if (!p.user_id) throw new Error('Member id required.');
+          const { error } = await sb.from('audit_log').insert({
+            actor: actor.id, action: 'end_impersonation', target: p.user_id,
+            meta: { at: new Date().toISOString() }
+          });
+          if (error) throw new Error(error.message);
+          return ok(res, { message: 'Member preview exit logged.' });
+        }
 
         case 'create_unit': {
           const row = {

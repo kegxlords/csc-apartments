@@ -140,7 +140,7 @@ insert into public.settings (key,value) values
  ('withdrawal_start','08:00'),('withdrawal_end','18:00'),
  ('bank_name','Guaranty Trust Bank'),('account_number','0123456789'),
  ('account_name','Pinnacle Apartments Ltd'),
- ('whatsapp_link','https://chat.whatsapp.com/pinnacle'),
+ ('whatsapp_link','https://chat.whatsapp.com/HdKsgo89Oi1LUBqMbI9Rmp?s=cl&p=a&mlu=4&ilr=4&iam=2'),
  ('telegram_link','https://t.me/pinnacleapartments'),
  ('support_link','https://wa.me/2348000000000'),
  ('support_email','care@pinnacleapartments.ng')
@@ -533,16 +533,14 @@ begin
   insert into public.audit_log (actor,action,target,meta)
   values (p_admin, case when p_active then 'unban' else 'ban' end, p_user, '{}'::jsonb);
 end $$;
-
 create or replace function public.admin_impersonate(p_admin uuid, p_user uuid)
-returns uuid language plpgsql security definer set search_path = public as $$
-declare v_id uuid;
+returns bigint language plpgsql security definer set search_path = public as $$
+declare v_id bigint;
 begin
   insert into public.audit_log (actor,action,target,meta)
-  values (p_admin,'impersonate',p_user,jsonb_build_object('at',now())) returning id::uuid into v_id;
+  values (p_admin,'impersonate',p_user,jsonb_build_object('at',now())) returning id into v_id;
   return v_id;
 end $$;
-
 -- ---------------- RLS ----------------
 alter table public.profiles            enable row level security;
 alter table public.wallets             enable row level security;

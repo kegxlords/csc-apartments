@@ -16,6 +16,9 @@
   ];
   let tab = 'overview';
   let settingsData = {};
+  let currentMemberId = null;
+  let currentMemberData = null;
+  let currentPreviewId = null;
 
   function message(title, detail, retry) {
     VIEW.innerHTML = `<section class="panel" role="alert">
@@ -134,7 +137,15 @@
   }
 
   async function loadMember(id) {
+    if (currentPreviewId) await endPreview(false);
     const data = await request('member', 'GET', null, { id });
+    currentMemberId = id;
+    currentMemberData = data;
+    $('#impBar')?.classList.add('hide');
+    renderMemberRecord(data);
+  }
+
+  function renderMemberRecord(data) {
     const p = data.profile || {};
     const wallet = data.wallet || {};
     const tx = data.transactions || [];
@@ -143,9 +154,62 @@
       <div class="metrics">${metric('Available balance', naira(wallet.balance), 'm-blue')}${metric('Income balance', naira(wallet.income_balance), 'm-green')}${metric('Locked', naira(wallet.locked), 'm-pink')}${metric('Total funded', naira(p.total_funded), 'm-blue')}</div>
       <section class="panel"><div class="panel-head"><h3>Account</h3><span>${p.is_admin ? '<span class="tag tag--soon">Admin</span>' : ''} ${p.is_active === false ? '<span class="tag tag--out">Suspended</span>' : '<span class="tag tag--live">Active</span>'}</span></div>
         <div class="kv-grid"><div class="kv"><span class="k">Email</span><span class="v">${esc(p.email || '—')}</span></div><div class="kv"><span class="k">Phone</span><span class="v">${esc(p.phone || '—')}</span></div><div class="kv"><span class="k">Referral code</span><span class="v">${esc(p.referral_code || '—')}</span></div><div class="kv"><span class="k">Joined</span><span class="v">${date(p.created_at)}</span></div></div>
-        <div class="view-actions" style="margin-top:14px"><button class="btn btn--green btn--sm" data-act="adjust" data-id="${esc(p.id)}" data-direction="credit">Credit wallet</button><button class="btn btn--red btn--sm" data-act="adjust" data-id="${esc(p.id)}" data-direction="debit">Debit wallet</button><button class="btn btn--${p.is_active === false ? 'green' : 'ghost'} btn--sm" data-act="ban" data-id="${esc(p.id)}" data-active="${p.is_active !== false}">${p.is_active === false ? 'Reinstate' : 'Suspend'}</button></div></section>
+        <div class="view-actions" style="margin-top:14px"><button class="btn btn--blue btn--sm" data-act="preview-member" data-id="${esc(p.id)}">View as member (read-only)</button><button class="btn btn--green btn--sm" data-act="adjust" data-id="${esc(p.id)}" data-direction="credit">Credit wallet</button><button class="btn btn--red btn--sm" data-act="adjust" data-id="${esc(p.id)}" data-direction="debit">Debit wallet</button><button class="btn btn--${p.is_active === false ? 'green' : 'ghost'} btn--sm" data-act="ban" data-id="${esc(p.id)}" data-active="${p.is_active !== false}">${p.is_active === false ? 'Reinstate' : 'Suspend'}</button></div></section>
         <section class="panel"><div class="panel-head"><h3>Recent transactions</h3></div>
         ${tx.length ? `<div class="table-scroll"><table class="dt"><thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead><tbody>${tx.slice(0, 50).map(t => `<tr><td>${date(t.created_at)}</td><td>${esc(t.description || '')}</td><td>${esc(t.type)}</td><td class="money">${naira(t.amount)}</td><td>${statusTag(t.status)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="c-muted">No transactions.</p>'}</section>`;
+  }
+
+  function renderMemberPreview(data) {
+    const p = data.profile || {};
+    const wallet = data.wallet || {};
+    const leases = data.leases || [];
+    const active = leases.filter(l => l.status === 'active');
+    const tx = data.transactions || [];
+    const dailyIncome = active.reduce((sum, lease) => {
+      const unit = Array.isArray(lease.units) ? lease.units[0] : (lease.units || {});
+      return sum + Number(unit.daily_yield || 0);
+    }, 0);
+    const residenceRows = active.map(lease => {
+      const unit = Array.isArray(lease.units) ? lease.units[0] : (lease.units || {});
+      return `<tr><td><b>${esc(unit.name || 'Residence')}</b></td><td>${Number(lease.days_paid || 0)} days paid</td><td class="money">${naira(unit.daily_yield)}</td><td>${date(lease.started_at)}</td></tr>`;
+    }).join('');
+    VIEW.innerHTML = `<div class="view-head"><div><span class="eyebrow">Read-only member preview</span><h1>Welcome, ${esc(p.full_name || 'Member')}</h1><p class="c-muted">Preview of the member-facing account summary. This does not sign in as the member; member actions are unavailable.</p></div>
+      <button class="btn btn--ghost btn--sm" data-act="exit-imp">Exit preview</button></div>
+      <div class="metrics">${metric('Available balance', naira(wallet.balance), 'm-blue')}${metric('Income balance', naira(wallet.income_balance), 'm-green')}${metric('Active residences', active.length.toLocaleString(), 'm-pink')}${metric('Estimated daily income', naira(dailyIncome), 'm-blue')}</div>
+      <section class="panel"><div class="panel-head"><h3>Account</h3>${p.is_active === false ? '<span class="tag tag--out">Suspended</span>' : '<span class="tag tag--live">Active</span>'}</div>
+        <div class="kv-grid"><div class="kv"><span class="k">Name</span><span class="v">${esc(p.full_name || '—')}</span></div><div class="kv"><span class="k">Referral code</span><span class="v">${esc(p.referral_code || '—')}</span></div><div class="kv"><span class="k">Member since</span><span class="v">${date(p.created_at)}</span></div><div class="kv"><span class="k">Check-in streak</span><span class="v">${Number(p.streak_days || 0)} days</span></div></div></section>
+      <section class="panel"><div class="panel-head"><h3>Your residences</h3></div>
+        ${residenceRows ? `<div class="table-scroll"><table class="dt"><thead><tr><th>Residence</th><th>Term</th><th>Daily income</th><th>Started</th></tr></thead><tbody>${residenceRows}</tbody></table></div>` : '<p class="c-muted">No active residences.</p>'}</section>
+      <section class="panel"><div class="panel-head"><h3>Recent activity</h3></div>
+        ${tx.length ? `<div class="table-scroll"><table class="dt"><thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead><tbody>${tx.slice(0, 10).map(t => `<tr><td>${date(t.created_at)}</td><td>${esc(t.description || '')}</td><td>${esc(String(t.type || '').replace(/_/g, ' '))}</td><td class="money">${naira(t.amount)}</td><td>${statusTag(t.status)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="c-muted">No recent activity.</p>'}</section>`;
+  }
+
+  async function beginPreview(id) {
+    if (!currentMemberData || currentMemberId !== id) {
+      currentMemberData = await request('member', 'GET', null, { id });
+      currentMemberId = id;
+    }
+    await post('impersonate', { user_id: id });
+    currentPreviewId = id;
+    const p = currentMemberData.profile || {};
+    const name = $('#impName');
+    if (name) name.textContent = p.full_name || p.email || 'Member';
+    $('#impBar')?.classList.remove('hide');
+    renderMemberPreview(currentMemberData);
+    UI.toast('Read-only member preview opened and logged.', 'ok');
+  }
+
+  async function endPreview(restore = true) {
+    const id = currentPreviewId;
+    if (!id) return;
+    currentPreviewId = null;
+    $('#impBar')?.classList.add('hide');
+    try {
+      await post('end_impersonation', { user_id: id });
+    } catch (err) {
+      UI.toast('Preview closed, but its exit audit could not be saved: ' + err.message, 'err');
+    }
+    if (restore && currentMemberData) renderMemberRecord(currentMemberData);
   }
 
   async function loadQueue(type) {
@@ -180,7 +244,7 @@
       ['income_days', 'Income duration (days)'], ['welcome_bonus', 'Welcome bonus'], ['checkin_bonus', 'Check-in bonus'],
       ['withdrawal_start', 'Withdrawal start (WAT)'], ['withdrawal_end', 'Withdrawal end (WAT)'],
       ['bank_name', 'Bank name'], ['account_number', 'Account number'], ['account_name', 'Account name'],
-      ['support_email', 'Support email'], ['support_link', 'WhatsApp support URL'], ['telegram_link', 'Telegram URL']
+      ['support_email', 'Support email'], ['support_link', 'WhatsApp support URL'], ['whatsapp_link', 'WhatsApp group invite URL'], ['telegram_link', 'Telegram URL']
     ];
     VIEW.innerHTML = `<div class="view-head"><div><span class="eyebrow">Configuration</span><h1>Settings</h1></div></div>
       <section class="panel"><form id="settingsForm"><div class="set-grid">
@@ -250,9 +314,11 @@
     if (!el) return;
     const action = el.dataset.act;
     try {
-      if (action === 'tab') { await render(el.dataset.tab); return; }
-      if (action === 'refresh' || action === 'retry') { await render(tab); return; }
+      if (action === 'tab') { if (currentPreviewId) await endPreview(false); await render(el.dataset.tab); return; }
+      if (action === 'refresh' || action === 'retry') { if (currentPreviewId && currentMemberData) renderMemberPreview(currentMemberData); else await render(tab); return; }
       if (action === 'member') { await loadMember(el.dataset.id); return; }
+      if (action === 'preview-member') { await beginPreview(el.dataset.id); return; }
+      if (action === 'exit-imp') { await endPreview(true); return; }
       if (action === 'sweep') {
         if (!window.confirm('Run the income sweep now? This will credit any due income drops.')) return;
         await refreshAfter('run_sweep', {}, 'Income sweep completed.'); return;
@@ -286,6 +352,7 @@
         await refreshAfter('unit_status', { id: el.dataset.id, status: el.dataset.status }); return;
       }
       if (action === 'signout') {
+        if (currentPreviewId) await endPreview(false);
         await Store.logout(); location.replace('../index.html'); return;
       }
     } catch (err) {
