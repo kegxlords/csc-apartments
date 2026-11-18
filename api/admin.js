@@ -3,6 +3,7 @@ import { admin, requireAdmin, ok, fail, body, num } from './_core.js';
 
 const hashToken = token => createHash('sha256').update(String(token)).digest('hex');
 const queueStatuses = new Set(['all', 'pending', 'completed', 'rejected']);
+const unitStatuses = new Set(['live', 'hidden', 'upcoming', 'deleted']);
 const validDays = value => {
   const days = String(value || '').split(',').map(v => Number(v.trim()));
   return days.length > 0 && days.every(Number.isInteger) && days.every(v => v >= 0 && v <= 6) && new Set(days).size === days.length;
@@ -196,17 +197,23 @@ export default async function handler(req, res) {
             status: p.status || 'live', sort_order: num(p.sort_order, 99)
           };
           if (!row.name || row.price <= 0 || row.daily_yield <= 0) throw new Error('Name, price and daily yield are required.');
+          if (row.duration_days <= 0 || row.purchase_limit <= 0) throw new Error('Income drops and purchase limit must be greater than zero.');
+          if (!unitStatuses.has(row.status)) throw new Error('Invalid residence status.');
           const { data, error } = await sb.from('units').insert(row).select().single();
           if (error) throw new Error(error.message);
           return ok(res, { unit: data, message: 'Residence published.' });
         }
 
         case 'update_unit': {
+          if (!p.id) throw new Error('Residence id required.');
           const patch = {};
           ['name', 'tier', 'image_url', 'description', 'status'].forEach(k => { if (p[k] !== undefined) patch[k] = p[k]; });
           ['price', 'daily_yield', 'duration_days', 'purchase_limit', 'bedrooms', 'bathrooms', 'sqm', 'sort_order']
             .forEach(k => { if (p[k] !== undefined) patch[k] = num(p[k]); });
           if (Array.isArray(p.amenities)) patch.amenities = p.amenities;
+          if (patch.name !== undefined && !String(patch.name).trim()) throw new Error('Residence name is required.');
+          if (patch.status !== undefined && !unitStatuses.has(patch.status)) throw new Error('Invalid residence status.');
+          for (const key of ['price', 'daily_yield', 'duration_days', 'purchase_limit']) if (patch[key] !== undefined && patch[key] <= 0) throw new Error('Price, income, duration and purchase limit must be greater than zero.');
           const { error } = await sb.from('units').update(patch).eq('id', p.id);
           if (error) throw new Error(error.message);
           return ok(res, { message: 'Residence updated.' });

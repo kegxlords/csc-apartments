@@ -22,6 +22,7 @@
   let currentPreviewToken = null;
   let queueStatus = 'pending';
   let queueSearch = '';
+  let unitsCache = [];
 
   function message(title, detail, retry) {
     VIEW.innerHTML = `<section class="panel" role="alert">
@@ -189,21 +190,11 @@
   }
 
   async function beginPreview(id) {
-    if (!currentMemberData || currentMemberId !== id) {
-      currentMemberData = await request('member', 'GET', null, { id });
-      currentMemberId = id;
-    }
     const session = await post('impersonate', { user_id: id });
-    currentPreviewToken = session.impersonation?.token || null;
-    if (!currentPreviewToken) throw new Error('The server did not return a preview session.');
-    currentMemberData = await request('member', 'GET', null, { id, impersonation_token: currentPreviewToken });
-    currentPreviewId = id;
-    const p = currentMemberData.profile || {};
-    const name = $('#impName');
-    if (name) name.textContent = p.full_name || p.email || 'Member';
-    $('#impBar')?.classList.remove('hide');
-    renderMemberPreview(currentMemberData);
-    UI.toast('Read-only member preview opened and logged.', 'ok');
+    const context = session.impersonation;
+    if (!context?.token) throw new Error('The server did not return a member session.');
+    sessionStorage.setItem('pinnacle.impersonation', JSON.stringify(context));
+    location.href = '../dashboard.html?impersonation=1';
   }
 
   async function endPreview(restore = true) {
@@ -254,9 +245,10 @@
   async function loadUnits() {
     const data = await request('units');
     const units = data.units || [];
+    unitsCache = units;
     VIEW.innerHTML = `<div class="view-head"><div><span class="eyebrow">Catalogue</span><h1>Residences</h1></div><button class="btn btn--blue btn--sm" data-act="create-unit">Add residence</button></div>
       <div class="table-scroll"><table class="dt"><thead><tr><th>Residence</th><th>Price</th><th>Yield / day</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-      ${units.map(u => `<tr><td><b>${esc(u.name)}</b><br><span class="c-muted">${esc(u.tier || u.slug || '')}</span></td><td class="money">${naira(u.price)}</td><td class="money">${naira(u.daily_yield)}</td><td>${Number(u.duration_days || 0)} days</td><td><span class="tag tag--${u.status === 'live' ? 'live' : u.status === 'upcoming' ? 'soon' : 'out'}">${esc(u.status)}</span></td><td><div class="acts"><button class="btn btn--ghost btn--xs" data-act="unit-status" data-id="${esc(u.id)}" data-status="${u.status === 'live' ? 'hidden' : 'live'}">${u.status === 'live' ? 'Hide' : 'Publish'}</button><button class="btn btn--ghost btn--xs" data-act="edit-unit" data-id="${esc(u.id)}" data-name="${esc(u.name)}" data-price="${esc(u.price)}" data-yield="${esc(u.daily_yield)}" data-days="${esc(u.duration_days)}">Edit</button></div></td></tr>`).join('') || '<tr><td colspan="6">No residences configured.</td></tr>'}
+      ${units.map(u => `<tr><td><b>${esc(u.name)}</b><br><span class="c-muted">${esc(u.tier || u.slug || '')}</span></td><td class="money">${naira(u.price)}</td><td class="money">${naira(u.daily_yield)}</td><td>${Number(u.duration_days || 0)} days</td><td><span class="tag tag--${u.status === 'live' ? 'live' : u.status === 'upcoming' ? 'soon' : 'out'}">${esc(u.status)}</span></td><td><div class="acts"><button class="btn btn--ghost btn--xs" data-act="unit-status" data-id="${esc(u.id)}" data-status="${u.status === 'live' ? 'hidden' : 'live'}">${u.status === 'live' ? 'Hide' : 'Publish'}</button><button class="btn btn--ghost btn--xs" data-act="edit-unit" data-id="${esc(u.id)}">Edit all data</button></div></td></tr>`).join('') || '<tr><td colspan="6">No residences configured.</td></tr>'}
       </tbody></table></div>`;
   }
 
@@ -315,18 +307,24 @@
   }
 
   function promptUnit(existing) {
-    const name = window.prompt('Residence name', existing?.name || '');
-    if (name == null || !name.trim()) return;
-    const price = window.prompt('Price (NGN)', existing?.price || '');
-    if (price == null) return;
-    const daily_yield = window.prompt('Daily yield (NGN)', existing?.daily_yield || '');
-    if (daily_yield == null) return;
-    const duration_days = window.prompt('Income duration (days)', existing?.duration_days || '30');
-    if (duration_days == null) return;
-    const payload = { name: name.trim(), price: Number(price), daily_yield: Number(daily_yield), duration_days: Number(duration_days) };
-    if (existing) payload.id = existing.id;
-    refreshAfter(existing ? 'update_unit' : 'create_unit', payload, existing ? 'Residence updated.' : 'Residence created.')
-      .catch(e => UI.toast(e.message, 'err'));
+    const u = existing || {};
+    const layer = UI.layer(`<div class="sheet-head"><h3>${existing ? 'Edit residence data' : 'Add residence'}</h3><button class="modal-x" data-close style="position:static">×</button></div>
+      <form id="unitForm"><div class="set-grid">
+        ${[['name','Name','text',u.name || ''],['tier','Tier / category','text',u.tier || ''],['price','Price (NGN)','number',u.price || ''],['daily_yield','Income per drop (NGN)','number',u.daily_yield || ''],['duration_days','Income drops','number',u.duration_days || 30],['purchase_limit','Purchase limit','number',u.purchase_limit || 5],['bedrooms','Bedrooms','number',u.bedrooms || 1],['bathrooms','Bathrooms','number',u.bathrooms || 1],['sqm','Area (sqm)','number',u.sqm || 0],['sort_order','Display order','number',u.sort_order || 0],['image_url','Image URL','text',u.image_url || '']].map(([key,label,type,value]) => `<label class="field-row"><span class="label">${label}</span><input class="input" name="${key}" type="${type}" value="${esc(value)}" ${['price','daily_yield','duration_days','purchase_limit'].includes(key) ? 'min="1" required' : ''}></label>`).join('')}
+        <label class="field-row"><span class="label">Status</span><select class="input" name="status"><option value="live" ${u.status === 'live' ? 'selected' : ''}>Live</option><option value="hidden" ${u.status === 'hidden' ? 'selected' : ''}>Hidden</option><option value="upcoming" ${u.status === 'upcoming' ? 'selected' : ''}>Upcoming</option></select></label>
+        <label class="field-row"><span class="label">Amenities <small>(comma-separated)</small></span><input class="input" name="amenities" value="${esc(Array.isArray(u.amenities) ? u.amenities.join(', ') : '')}"></label>
+        <label class="field-row" style="grid-column:1/-1"><span class="label">Description</span><textarea class="input" name="description" rows="3">${esc(u.description || '')}</textarea></label>
+      </div><button class="btn btn--blue btn--block" type="submit">${existing ? 'Save all package data' : 'Create residence'}</button></form>`, 'sheet');
+    layer.querySelector('#unitForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const form = new FormData(e.currentTarget);
+      const payload = Object.fromEntries(form.entries());
+      ['price','daily_yield','duration_days','purchase_limit','bedrooms','bathrooms','sqm','sort_order'].forEach(k => { payload[k] = Number(payload[k] || 0); });
+      payload.amenities = String(payload.amenities || '').split(',').map(v => v.trim()).filter(Boolean);
+      if (existing) payload.id = existing.id;
+      try { UI.closeLayer(); await refreshAfter(existing ? 'update_unit' : 'create_unit', payload, existing ? 'Residence updated.' : 'Residence created.'); }
+      catch (err) { UI.toast(err.message, 'err'); }
+    });
   }
 
   async function saveSettings(e) {
@@ -376,7 +374,7 @@
       }
       if (action === 'create-unit') { promptUnit(); return; }
       if (action === 'edit-unit') {
-        promptUnit({ id: el.dataset.id, name: el.dataset.name, price: el.dataset.price, daily_yield: el.dataset.yield, duration_days: el.dataset.days }); return;
+        promptUnit(unitsCache.find(u => u.id === el.dataset.id)); return;
       }
       if (action === 'unit-status') {
         await refreshAfter('unit_status', { id: el.dataset.id, status: el.dataset.status }); return;

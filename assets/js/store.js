@@ -143,13 +143,37 @@
       throw e;
     } finally { if (timer) clearTimeout(timer); }
   }
+  function impersonationContext() {
+    try {
+      const raw = sessionStorage.getItem('pinnacle.impersonation');
+      if (!raw) return null;
+      const context = JSON.parse(raw);
+      if (!context?.token || (context.expires_at && Date.parse(context.expires_at) <= Date.now())) {
+        sessionStorage.removeItem('pinnacle.impersonation'); return null;
+      }
+      return context;
+    } catch (e) { return null; }
+  }
+  function memberRequest(path, token, method = 'GET', payload = null) {
+    const context = impersonationContext();
+    if (!context) return apiRequest(path, token, method, payload);
+    return fetch(path, {
+      method,
+      headers: Object.assign({ Authorization: 'Bearer ' + token, 'X-Impersonation-Token': context.token }, payload ? { 'Content-Type': 'application/json' } : {}),
+      body: payload ? JSON.stringify(payload) : undefined
+    }).then(async response => {
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Server request failed (' + response.status + ').');
+      return result;
+    });
+  }
   async function liveRequest(path, method, payload) {
     if (!LIVE) throw new Error('Live account service is not available.');
     const { data, error } = await sb.auth.getSession();
     if (error) throw new Error(error.message);
     const token = data.session?.access_token;
     if (!token) throw new Error('Your session has expired. Please sign in again.');
-    return apiRequest(path, token, method, payload);
+    return memberRequest(path, token, method, payload);
   }
   async function refreshLive() {
     try { return await S.hydrate(); }
@@ -204,7 +228,8 @@
         const { data, error } = await sb.auth.getSession();
         if (error) throw new Error(error.message);
         if (!data.session) { clearLive(); return null; }
-        return { user: { id: data.session.user.id, email: data.session.user.email } };
+        const context = impersonationContext();
+        return { user: { id: context?.user_id || data.session.user.id, email: data.session.user.email }, impersonating: !!context };
       }
       return db.session ? { user: db.users.find(u => u.id === db.session) } : null;
     },
@@ -214,16 +239,15 @@
       if (error) throw new Error(error.message);
       const session = data.session;
       if (!session) { clearLive(); return null; }
-      const id = session.user.id, token = session.access_token;
-      const [profileRes, walletRes, unitsRes, networkRes, checkinRes, leaseRes] = await Promise.all([
-        apiRequest('/api/auth-profile', token),
-        apiRequest('/api/wallet', token),
-        apiRequest('/api/units', token),
-        apiRequest('/api/network', token),
-        apiRequest('/api/checkin', token),
-        sb.from('leases').select('*').eq('user_id', id).order('started_at', { ascending: false }).limit(250)
+      const token = session.access_token;
+      const profileRes = await memberRequest('/api/auth-profile', token);
+      const id = profileRes.profile?.id || session.user.id;
+      const [walletRes, unitsRes, networkRes, checkinRes] = await Promise.all([
+        memberRequest('/api/wallet', token),
+        memberRequest('/api/units', token),
+        memberRequest('/api/network', token),
+        memberRequest('/api/checkin', token)
       ]);
-      if (leaseRes.error) throw new Error(leaseRes.error.message);
       const profile = profileRes.profile;
       if (!profile) throw new Error('Your member profile could not be found. Please contact support.');
       const wallet = walletRes.wallet || profileRes.wallet;
@@ -250,7 +274,7 @@
       db.users = [me, ...peers];
       db.settings = settings;
       db.units = units;
-      db.leases = (leaseRes.data || []).map(l => Object.assign({}, l, {
+      db.leases = (profileRes.leases || []).map(l => Object.assign({}, l, {
         started_at: asTime(l.started_at), days_paid: asNumber(l.days_paid), total_collected: asNumber(l.total_collected)
       }));
       db.tx = (walletRes.transactions || []).map(t => Object.assign({}, t, {
@@ -267,6 +291,16 @@
         balance: asNumber(wallet.balance), income: asNumber(wallet.income_balance), locked: asNumber(wallet.locked)
       };
       return { user: { id, email: me.email } };
+    },
+    impersonating() { return !!impersonationContext(); },
+    async exitImpersonation() {
+      const context = impersonationContext();
+      if (!context) return;
+      const { data, error } = await sb.auth.getSession();
+      if (error) throw new Error(error.message);
+      if (data.session) await apiRequest('/api/admin', data.session.access_token, 'POST', { action: 'end_impersonation', payload: { user_id: context.user_id, token: context.token } });
+      sessionStorage.removeItem('pinnacle.impersonation');
+      location.href = 'admin/index.html#users';
     },
     me() { return db.session ? db.users.find(u => u.id === db.session) : null; },
     settings() { return clone(db.settings); },
