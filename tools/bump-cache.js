@@ -5,8 +5,8 @@
    Stamps ?v=N onto every assets/css|js reference in all HTML
    files (root + admin/), so stale immutable caches are bypassed.
    ============================================================ */
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 const root = process.cwd();
 const versionFile = path.join(root, '.cacheversion');
