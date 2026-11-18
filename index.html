@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign In · Pinnacle Apartments</title>
+<meta name="theme-color" content="#1F6FEB">
+<meta name="description" content="Pinnacle Apartments — managed residences with rental income distributed every 24 hours.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/theme.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+</head>
+<body data-page="login">
+
+<div class="boot" id="boot"><div class="boot-in">
+  <div class="boot-ring"><span class="crest-mark"><svg viewBox="0 0 40 40"><path d="M20 4 L34 13 V36 H6 V13 Z" fill="none" stroke="#fff" stroke-width="2.4"/><rect x="12" y="19" width="6" height="6" fill="#FFD9EC"/><rect x="22" y="19" width="6" height="6" fill="#fff"/></svg></span></div>
+  <div class="boot-txt">Pinnacle</div>
+</div></div>
+
+<main class="main main--auth">
+  <div class="auth-hero" id="hero"></div>
+
+  <div class="auth-wrap">
+    <section class="auth-card rise rise-1">
+      <h1 class="auth-title">Welcome Back!</h1>
+      <p class="auth-sub">Sign in to manage your residences</p>
+
+      <div class="alert" id="alert" role="status" aria-live="polite"></div>
+
+      <form id="loginForm" novalidate>
+        <div class="field-row">
+          <label class="label" for="email">Email Address</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 5h20v14H2zm0 0l10 8L22 5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            <input class="input" id="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <label class="label" for="password">Password</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>
+            <input class="input" id="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+            <button class="eye" type="button" data-eye="password">Show</button>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <label style="display:flex;gap:7px;align-items:center;font-size:12px;font-weight:700;color:var(--muted)">
+            <input type="checkbox" id="remember" checked style="width:16px;height:16px;accent-color:var(--blue)"> Remember me
+          </label>
+          <a href="forgot-password.html" style="font-size:12.5px;font-weight:800;color:var(--pink)">Forgot password?</a>
+        </div>
+
+        <button class="btn btn--primary btn--block" type="submit">Sign In</button>
+      </form>
+
+      <p class="auth-foot">New to Pinnacle? <a href="register.html">Create an account</a></p>
+      <div class="auth-bonus">🎁 Every new resident receives a welcome bonus instantly on signup.</div>
+    </section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/auth.js"></script>
+</body>
+</html>
