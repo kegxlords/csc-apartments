@@ -128,6 +128,18 @@ create table if not exists public.audit_log (
   created_at timestamptz default now()
 );
 
+create table if not exists public.admin_impersonation_sessions (
+  id uuid primary key default gen_random_uuid(),
+  token_hash text not null unique,
+  admin_id uuid not null references public.profiles(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  expires_at timestamptz not null,
+  ended_at timestamptz,
+  created_at timestamptz default now()
+);
+create index if not exists admin_impersonation_lookup_idx
+  on public.admin_impersonation_sessions (token_hash, admin_id, user_id, expires_at);
+
 -- ---------------- settings seed ----------------
 insert into public.settings (key,value) values
  ('min_deposit','3000'),('max_deposit','5000000'),
@@ -554,6 +566,7 @@ alter table public.settings            enable row level security;
 alter table public.cron_runs           enable row level security;
 alter table public.support_tickets     enable row level security;
 alter table public.audit_log           enable row level security;
+alter table public.admin_impersonation_sessions enable row level security;
 
 -- profiles
 drop policy if exists profiles_self_read on public.profiles;
@@ -629,6 +642,10 @@ create policy tickets_admin_all on public.support_tickets for all using (public.
 -- audit log
 drop policy if exists audit_admin_read on public.audit_log;
 create policy audit_admin_read on public.audit_log for select using (public.is_admin());
+
+drop policy if exists impersonation_admin_all on public.admin_impersonation_sessions;
+create policy impersonation_admin_all on public.admin_impersonation_sessions for all
+  using (public.is_admin()) with check (public.is_admin());
 
 -- ---------------- function grants ----------------
 revoke all on function public.sweep_income(int) from public, anon, authenticated;
