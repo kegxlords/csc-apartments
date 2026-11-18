@@ -643,11 +643,18 @@ revoke all on function public.admin_grant_lease(uuid,uuid,uuid) from public, ano
 revoke all on function public.admin_set_ban(uuid,uuid,boolean) from public, anon, authenticated;
 revoke all on function public.admin_impersonate(uuid,uuid) from public, anon, authenticated;
 
-grant execute on function public.lease_unit(uuid,uuid) to authenticated, service_role;
-grant execute on function public.do_checkin(uuid) to authenticated, service_role;
-grant execute on function public.request_withdrawal(uuid,numeric,uuid) to authenticated, service_role;
-grant execute on function public.grant_welcome_bonus(uuid,numeric,text) to authenticated, service_role;
-grant execute on function public.is_admin() to anon, authenticated, service_role;
+revoke all on function public.lease_unit(uuid,uuid) from public, anon, authenticated;
+revoke all on function public.do_checkin(uuid) from public, anon, authenticated;
+revoke all on function public.request_withdrawal(uuid,numeric,uuid) from public, anon, authenticated;
+revoke all on function public.grant_welcome_bonus(uuid,numeric,text) from public, anon, authenticated;
+revoke all on function public.handle_new_user() from public, anon, authenticated, service_role;
+revoke all on function public.is_admin() from public, anon;
+
+grant execute on function public.lease_unit(uuid,uuid) to service_role;
+grant execute on function public.do_checkin(uuid) to service_role;
+grant execute on function public.request_withdrawal(uuid,numeric,uuid) to service_role;
+grant execute on function public.grant_welcome_bonus(uuid,numeric,text) to service_role;
+grant execute on function public.is_admin() to authenticated, service_role;
 grant execute on function public.sweep_income(int) to service_role;
 grant execute on function public.approve_deposit(uuid,uuid,text) to service_role;
 grant execute on function public.reject_deposit(uuid,uuid,text) to service_role;
