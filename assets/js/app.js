@@ -72,16 +72,17 @@
   }
   function toast(msg, kind, opts) {
     kind = kind || 'info'; opts = opts || {};
+    const undo = opts.undo && !(window.Store && window.Store.live) ? opts.undo : null;
     const map = { ok: 'check', err: 'alert', info: 'info', warn: 'alert' };
     const el = document.createElement('div');
     el.className = 'toast toast--' + kind;
     el.innerHTML = icon(map[kind] || 'info') +
       `<div style="flex:1;min-width:0"><b>${esc(msg)}</b>${opts.sub ? '<span>' + esc(opts.sub) + '</span>' : ''}</div>` +
-      (opts.undo ? '<button class="toast-undo" type="button">Undo</button>' : '');
+      (undo ? '<button class="toast-undo" type="button">Undo</button>' : '');
     toastRoot().appendChild(el);
     const kill = () => { el.classList.add('out'); setTimeout(() => el.remove(), 320); };
-    if (opts.undo) el.querySelector('.toast-undo').addEventListener('click', () => { opts.undo(); kill(); });
-    setTimeout(kill, opts.undo ? 7000 : 3800);
+    if (undo) el.querySelector('.toast-undo').addEventListener('click', () => { undo(); kill(); });
+    setTimeout(kill, undo ? 7000 : 3800);
     return kill;
   }
 
@@ -224,12 +225,27 @@
     'forgot-password', 'forgot-password.html',
     'reset-password', 'reset-password.html'
   ];
+  function withTimeout(promise, ms, message) {
+    let timer;
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); })
+    ]).finally(() => clearTimeout(timer));
+  }
   async function guard() {
     const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-    const sess = await Store.session();
-    if (!sess && !PUBLIC.includes(page)) { location.replace('index.html'); return null; }
-    if (sess && (page === 'index.html' || page === '')) { location.replace('dashboard.html'); return null; }
-    return sess;
+    try {
+      const sess = await withTimeout(Store.session(), 10000, 'Authentication is taking too long. Please try again.');
+      if (!sess && !PUBLIC.includes(page)) { location.replace('index.html'); return null; }
+      if (sess && ['index.html', 'index', ''].includes(page)) { location.replace('dashboard.html'); return null; }
+      if (sess && Store.live && !PUBLIC.includes(page))
+        await withTimeout(Store.hydrate(), 20000, 'Loading your account took too long. Please refresh and try again.');
+      return sess;
+    } catch (err) {
+      bootOff();
+      toast('Unable to load your account data. ' + (err.message || 'Please try again.'), 'err');
+      return null;
+    }
   }
 
   /* ---------------- boot ---------------- */
@@ -237,6 +253,12 @@
     const b = document.getElementById('boot'); if (!b) return;
     setTimeout(() => { b.classList.add('off'); setTimeout(() => b.remove(), 560); }, 420);
   }
+  window.addEventListener('error', () => {
+    if (document.getElementById('boot')) { bootOff(); toast('This page could not finish loading. Please refresh and try again.', 'err'); }
+  });
+  window.addEventListener('unhandledrejection', () => {
+    if (document.getElementById('boot')) { bootOff(); toast('This page could not finish loading. Please refresh and try again.', 'err'); }
+  });
   function field() {
     if (document.querySelector('.field')) return;
     const f = document.createElement('div');
