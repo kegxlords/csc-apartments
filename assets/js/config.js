@@ -4,8 +4,8 @@
    Leave blank to run the built-in local engine (fully working).
    ============================================================ */
 window.PINNACLE = {
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: '',
+  SUPABASE_URL: 'https://khzlelahiznpexcixcsu.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_jwnzzTk45cVA3kfJYhAUPg_-08nNCAO',
 
   BRAND: 'Pinnacle Apartments',
   TZ: 'Africa/Lagos',
