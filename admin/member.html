@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Member Dossier · Pinnacle Operations</title>
+<meta name="theme-color" content="#123A8F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/theme.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/admin.css">
+<style>
+  .m-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .m-actions .btn{flex:1;min-width:132px}
+  .kv-grid{display:grid;gap:0}
+  @media(min-width:700px){.kv-grid{grid-template-columns:1fr 1fr;column-gap:26px}}
+  .mini-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:11px;margin-bottom:16px}
+  .mini{padding:13px 10px;border-radius:var(--r-md);text-align:center;background:var(--ground);border:1px solid var(--hairline)}
+  .mini .v{font-family:var(--font-display);font-size:17px;font-weight:800;letter-spacing:-.02em}
+  .mini .k{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);margin-top:2px}
+  .chain{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chain .node{padding:7px 12px;border-radius:var(--r-pill);background:var(--surface);border:1.5px solid var(--hairline);font-size:11.5px;font-weight:800}
+  .chain .node b{color:var(--pink)}
+  .chain .arrow{color:var(--muted-2);font-weight:800}
+</style>
+</head>
+<body class="console" data-page="member">
+
+<div class="boot" id="boot"><div class="boot-in">
+  <div class="boot-ring"><span class="crest-mark"><svg viewBox="0 0 40 40"><path d="M20 4 L34 13 V36 H6 V13 Z" fill="none" stroke="#fff" stroke-width="2.4"/><rect x="12" y="19" width="6" height="6" fill="#FFD9EC"/><rect x="22" y="19" width="6" height="6" fill="#fff"/></svg></span></div>
+  <div class="boot-txt">Dossier</div>
+</div></div>
+
+<header class="console-bar">
+  <div class="console-bar-in">
+    <a class="back-btn" href="index.html#users" aria-label="Back to users">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    <a class="crest" href="index.html">
+      <span class="crest-mark"><svg viewBox="0 0 40 40"><path d="M20 4 L34 13 V36 H6 V13 Z" fill="none" stroke="#fff" stroke-width="2.2"/><rect x="11" y="18" width="6" height="6" fill="#FFD9EC"/><rect x="23" y="18" width="6" height="6" fill="#fff" opacity=".8"/><rect x="11" y="27" width="6" height="6" fill="#fff" opacity=".6"/><rect x="23" y="27" width="6" height="6" fill="#FFD9EC"/></svg></span>
+      <span class="crest-txt"><b>PINNACLE</b><i>Operations</i></span>
+    </a>
+    <span class="console-tag">Dossier</span>
+    <span style="flex:1"></span>
+    <span class="console-clock" id="clock">—</span>
+    <button class="icon-btn" type="button" data-act="sweep" aria-label="Run income sweep" title="Run income sweep">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 3v5h-5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>
+    </button>
+    <button class="icon-btn" type="button" data-act="back" aria-label="Back to users" title="Back to users">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="console-main" id="view"></main>
+
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/admin-store.js"></script>
+<script src="../assets/js/app.js"></script>
+<script src="../assets/js/admin-member.js"></script>
+</body>
+</html>
