@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const { icon, esc, ago, toast } = UI;
-  const KEY = 'pinnacle.tickets.v1';
+  const KEY = 'pinnacle.tickets.v2';
 
   const FAQ = [
     ['When does my rental income arrive?', 'Exactly 24 hours after your lease begins, then every 24 hours until all income days are paid. Each lease shows a live countdown on the My Leases page. Drops are automatic — you never need to claim them.'],
@@ -21,7 +21,8 @@
 
   function paintTickets() {
     const mine = load().filter(t => t.user === Store.me().id).sort((a, b) => b.at - a.at);
-    document.getElementById('openCount').textContent = mine.filter(t => t.status === 'open').length;
+    const openEl = document.getElementById('openCount');
+    if (openEl) openEl.textContent = mine.filter(t => t.status === 'open').length;
     const root = document.getElementById('tickets');
     root.innerHTML = mine.length ? mine.map(t => `
       <div class="ticket">
@@ -78,16 +79,16 @@
         return;
       }
       btn.disabled = true; btn.innerHTML = '<i class="spin"></i> Sending…';
-      const ref = 'TKT-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+      const refNo = 'TKT-' + Math.random().toString(36).slice(2, 8).toUpperCase();
       const all = load();
       all.push({
-        id: ref, ref, user: Store.me().id, category: document.getElementById('cat').value,
+        id: refNo, ref: refNo, user: Store.me().id, category: document.getElementById('cat').value,
         subject, message, status: 'open', reply: '', at: Date.now()
       });
       save(all);
       alertEl.className = 'alert alert--ok show';
-      alertEl.innerHTML = icon('check') + '<span>Ticket ' + ref + ' opened. Our care team will reply here and on your contact channel.</span>';
-      toast('Ticket opened', 'ok', { sub: ref });
+      alertEl.innerHTML = icon('check') + '<span>Ticket ' + refNo + ' opened. Our care team will reply here and on your contact channel.</span>';
+      toast('Ticket opened', 'ok', { sub: refNo });
       e.target.reset();
       paintTickets();
       btn.disabled = false; btn.innerHTML = old;
