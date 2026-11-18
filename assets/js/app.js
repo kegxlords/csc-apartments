@@ -169,6 +169,7 @@
   function mountHeader({ title, back } = {}) {
     const h = document.getElementById('hdr'); if (!h) return;
     h.className = 'header';
+    const impersonating = Store.impersonating && Store.impersonating();
     h.innerHTML = `<div class="header-in">
       ${back ? `<a class="back-btn" href="${back}" aria-label="Back">${icon('back')}</a>` : ''}
       <a class="crest" href="dashboard.html">${crest()}<span class="crest-txt"><b>PINNACLE</b><i>Apartments</i></span></a>
@@ -176,11 +177,16 @@
       <span class="header-spacer"></span>
       <button class="icon-btn" id="hdrCare" aria-label="Customer care">${icon('headset')}</button>
       <button class="icon-btn" id="hdrBell" aria-label="Notifications">${icon('bell')}<i class="dot"></i></button>
-    </div>`;
+    </div>${impersonating ? `<div style="background:#d92d20;color:#fff;padding:9px 14px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:12px;letter-spacing:.02em">Admin member session <button id="exitImpersonation" type="button" style="border:1px solid rgba(255,255,255,.6);border-radius:999px;background:rgba(255,255,255,.16);color:#fff;padding:6px 10px;font:inherit">Exit preview</button></div>` : ''}`;
     const st = () => h.classList.toggle('is-stuck', window.scrollY > 8);
     window.addEventListener('scroll', st, { passive: true }); st();
     h.querySelector('#hdrCare').addEventListener('click', careSheet);
     h.querySelector('#hdrBell').addEventListener('click', bellSheet);
+    h.querySelector('#exitImpersonation')?.addEventListener('click', async () => {
+      const button = h.querySelector('#exitImpersonation');
+      button.disabled = true; button.textContent = 'Exiting…';
+      try { await Store.exitImpersonation(); } catch (err) { button.disabled = false; button.textContent = 'Exit preview'; toast(err.message, 'err'); }
+    });
   }
 
   function mountNav(active) {

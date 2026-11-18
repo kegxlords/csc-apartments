@@ -1,4 +1,7 @@
+import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+
+const hashToken = token => createHash('sha256').update(String(token)).digest('hex');
 
 export const admin = () =>
   createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
@@ -12,9 +15,23 @@ export async function user(req) {
   const sb = admin();
   const { data, error } = await sb.auth.getUser(token);
   if (error || !data?.user) throw new Error('Unauthorized — invalid session.');
-  const { data: p } = await sb.from('profiles').select('is_active,is_admin').eq('id', data.user.id).single();
-  if (p && p.is_active === false) throw new Error('This account has been suspended.');
-  return { ...data.user, is_admin: !!p?.is_admin };
+  const { data: adminProfile } = await sb.from('profiles').select('is_active,is_admin').eq('id', data.user.id).single();
+  if (adminProfile && adminProfile.is_active === false) throw new Error('This account has been suspended.');
+
+  const impersonationToken = req.headers['x-impersonation-token'] || req.headers['X-Impersonation-Token'];
+  if (impersonationToken) {
+    if (!adminProfile?.is_admin) throw new Error('Only an administrator can impersonate a member.');
+    const { data: session, error: sessionError } = await sb.from('admin_impersonation_sessions')
+      .select('id,user_id,expires_at').eq('token_hash', hashToken(impersonationToken))
+      .eq('admin_id', data.user.id).is('ended_at', null).gt('expires_at', new Date().toISOString()).maybeSingle();
+    if (sessionError || !session) throw new Error('This member session has expired.');
+    const { data: target, error: targetError } = await sb.from('profiles').select('id,email,is_active').eq('id', session.user_id).single();
+    if (targetError || !target) throw new Error('The impersonated member no longer exists.');
+    if (target.is_active === false) throw new Error('This member account is suspended.');
+    return { ...data.user, id: target.id, email: target.email || data.user.email, is_admin: false, impersonated: true, admin_id: data.user.id };
+  }
+
+  return { ...data.user, is_admin: !!adminProfile?.is_admin };
 }
 
 export async function requireAdmin(req) {

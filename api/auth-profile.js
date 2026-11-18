@@ -7,13 +7,14 @@ export default async function handler(req, res) {
     const b = body(req);
 
     if (req.method === 'GET') {
-      const [{ data: profile }, { data: wallet }, { data: cards }, s] = await Promise.all([
+      const [{ data: profile }, { data: wallet }, { data: cards }, { data: leases }, s] = await Promise.all([
         sb.from('profiles').select('*').eq('id', u.id).single(),
         sb.from('wallets').select('balance,income_balance,locked').eq('user_id', u.id).single(),
         sb.from('bank_accounts').select('*').eq('user_id', u.id).order('created_at'),
+        sb.from('leases').select('*, units(*)').eq('user_id', u.id).order('started_at', { ascending: false }).limit(250),
         settingsMap(sb)
       ]);
-      return ok(res, { profile, wallet, cards: cards || [], settings: s });
+      return ok(res, { profile, wallet, cards: cards || [], leases: leases || [], settings: s });
     }
 
     if (req.method === 'POST') {
