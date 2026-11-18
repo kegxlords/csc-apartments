@@ -3,6 +3,10 @@ import { admin, requireAdmin, ok, fail, body, num } from './_core.js';
 
 const hashToken = token => createHash('sha256').update(String(token)).digest('hex');
 const queueStatuses = new Set(['all', 'pending', 'completed', 'rejected']);
+const validDays = value => {
+  const days = String(value || '').split(',').map(v => Number(v.trim()));
+  return days.length > 0 && days.every(Number.isInteger) && days.every(v => v >= 0 && v <= 6) && new Set(days).size === days.length;
+};
 
 export default async function handler(req, res) {
   const sb = admin();
@@ -222,6 +226,8 @@ export default async function handler(req, res) {
           return ok(res, { message: 'Catalogue order saved.' });
 
         case 'save_settings': {
+          if (p.withdrawal_days !== undefined && !validDays(p.withdrawal_days)) throw new Error('Withdrawal days must be a comma-separated list of unique values from 0 to 6.');
+          if (p.income_drop_days !== undefined && !validDays(p.income_drop_days)) throw new Error('Income drop days must be a comma-separated list of unique values from 0 to 6.');
           const rows = Object.entries(p).map(([key, value]) => ({ key, value: String(value) }));
           if (!rows.length) throw new Error('Nothing to save.');
           const { error } = await sb.from('settings').upsert(rows, { onConflict: 'key' });
