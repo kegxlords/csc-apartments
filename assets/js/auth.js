@@ -1,13 +1,14 @@
 /* ============================================================
-   PINNACLE APARTMENTS — Auth pages (login · register · forgot · reset)
+   PINNACLE APARTMENTS — Auth controller (production)
+   login · register (captcha) · forgot · reset — no demo paths
    ============================================================ */
 (function () {
   'use strict';
   const { icon, esc, toast, bootOff, guard } = UI;
 
-  /* ---------------- captcha ---------------- */
+  /* ---------------- canvas captcha ---------------- */
   const Captcha = (() => {
-    let value = '', canvas, ctx;
+    let value = '', canvas = null, ctx = null;
     function draw() {
       if (!canvas) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -46,16 +47,19 @@
     return {
       mount(el) { canvas = el; draw(); },
       refresh() { draw(); },
-      check(v) { return String(v).trim() === value; },
-      get value() { return value; }
+      check(v) { return String(v).trim() === value; }
     };
   })();
 
-  /* ---------------- shared bits ---------------- */
+  /* ---------------- helpers ---------------- */
   function alertBox(id) {
     const el = document.getElementById(id);
     return {
-      show(msg, kind) { el.className = 'alert alert--' + (kind || 'err') + ' show'; el.innerHTML = icon(kind === 'ok' ? 'check' : kind === 'info' ? 'info' : 'alert') + '<span>' + esc(msg) + '</span>'; },
+      el,
+      show(msg, kind) {
+        el.className = 'alert alert--' + (kind || 'err') + ' show';
+        el.innerHTML = icon(kind === 'ok' ? 'check' : kind === 'info' ? 'info' : 'alert') + '<span>' + esc(msg) + '</span>';
+      },
       hide() { el.className = 'alert'; el.innerHTML = ''; }
     };
   }
@@ -64,9 +68,8 @@
     else { btn.disabled = false; btn.innerHTML = btn.dataset.old || label || 'Continue'; }
   }
   function hero() {
-    const cfg = window.PINNACLE;
     const h = document.getElementById('hero'); if (!h) return;
-    h.innerHTML = `<img class="auth-hero-img" src="${esc(cfg.IMAGES.authHero)}" alt=""
+    h.innerHTML = `<img class="auth-hero-img" src="${esc(window.PINNACLE.IMAGES.authHero)}" alt=""
         onerror="this.onerror=null;this.src='${Store.banner(0)}'">
       <div class="auth-hero-badge">${UI.crest()}<b>PINNACLE APARTMENTS</b></div>`;
   }
@@ -81,6 +84,7 @@
     });
   }
   function strength(input, meter) {
+    if (!input || !meter) return;
     input.addEventListener('input', () => {
       const v = input.value; let s = 0;
       if (v.length >= 6) s++;
@@ -89,6 +93,21 @@
       if (/\d/.test(v) && /[^A-Za-z0-9]/.test(v)) s++;
       meter.className = 'strength s' + s;
     });
+  }
+  function rememberEmail() {
+    try {
+      const saved = localStorage.getItem('pinnacle.email');
+      const el = document.getElementById('email');
+      const chk = document.getElementById('remember');
+      if (el && saved) el.value = saved;
+      const form = document.getElementById('loginForm');
+      if (form && chk) form.addEventListener('submit', () => {
+        try {
+          if (chk.checked) localStorage.setItem('pinnacle.email', el.value.trim());
+          else localStorage.removeItem('pinnacle.email');
+        } catch (e) {}
+      });
+    } catch (e) {}
   }
 
   /* ---------------- page routers ---------------- */
@@ -102,21 +121,13 @@
     if (page === 'login') {
       const a = alertBox('alert');
       const form = document.getElementById('loginForm');
-      const emailEl = document.getElementById('email');
-      const passEl = document.getElementById('password');
-
-      if (!Store.live) {
-        emailEl.value = 'member@pinnacle.ng';
-        passEl.value = 'pinnacle';
-        a.show('Demo account loaded — tap Sign In to explore a populated portfolio.', 'info');
-      }
-
+      rememberEmail();
       form.addEventListener('submit', async e => {
         e.preventDefault(); a.hide();
         const btn = form.querySelector('button[type=submit]');
         busy(btn, true, 'Signing in…');
         try {
-          await Store.login(emailEl.value, passEl.value);
+          await Store.login(document.getElementById('email').value, document.getElementById('password').value);
           a.show('Welcome back. Opening your portfolio…', 'ok');
           setTimeout(() => location.replace('dashboard.html'), 550);
         } catch (err) { a.show(err.message); busy(btn, false, 'Sign In'); }
@@ -129,7 +140,8 @@
       const form = document.getElementById('regForm');
       Captcha.mount(document.getElementById('capCanvas'));
       document.getElementById('capRefresh').addEventListener('click', () => {
-        Captcha.refresh(); document.getElementById('captcha').value = '';
+        Captcha.refresh();
+        document.getElementById('captcha').value = '';
       });
       strength(document.getElementById('password'), document.getElementById('meter'));
 
@@ -138,17 +150,16 @@
         document.getElementById('invite').value = ref.toUpperCase();
         a.show('Invitation code applied — you are joining a verified member’s network.', 'ok');
       }
-      const bonus = Store.setting('welcome_bonus');
-      document.getElementById('bonusAmt').textContent = UI.naira2(bonus);
+      document.getElementById('bonusAmt').textContent = UI.naira2(Store.setting('welcome_bonus'));
 
       form.addEventListener('submit', async e => {
         e.preventDefault(); a.hide();
-        const cap = document.getElementById('captcha').value;
-        if (!Captcha.check(cap)) {
+        const capEl = document.getElementById('captcha');
+        if (!Captcha.check(capEl.value)) {
           a.show('Captcha does not match. A fresh code has been generated.');
-          Captcha.refresh(); document.getElementById('captcha').value = '';
-          document.getElementById('capWrap').classList.add('err');
-          setTimeout(() => document.getElementById('capWrap').classList.remove('err'), 1600);
+          Captcha.refresh(); capEl.value = '';
+          const w = document.getElementById('capWrap');
+          w.classList.add('err'); setTimeout(() => w.classList.remove('err'), 1600);
           return;
         }
         const btn = form.querySelector('button[type=submit]');
@@ -164,10 +175,13 @@
             a.show('Account created. Check ' + r.email + ' for your confirmation link, then sign in.', 'ok');
             busy(btn, false, 'Create Account'); form.reset(); Captcha.refresh();
           } else {
-            a.show('Account created with a ' + UI.naira(bonus) + ' welcome bonus. Redirecting to sign in…', 'ok');
-            setTimeout(() => location.replace('index.html'), 1200);
+            a.show('Account created with a ' + UI.naira(Store.setting('welcome_bonus')) + ' welcome bonus. Taking you to sign in…', 'ok');
+            setTimeout(() => location.replace('index.html'), 1100);
           }
-        } catch (err) { a.show(err.message); Captcha.refresh(); document.getElementById('captcha').value = ''; busy(btn, false, 'Create Account'); }
+        } catch (err) {
+          a.show(err.message); Captcha.refresh(); document.getElementById('captcha').value = '';
+          busy(btn, false, 'Create Account');
+        }
       });
     }
 
@@ -180,15 +194,8 @@
         const btn = form.querySelector('button[type=submit]');
         busy(btn, true, 'Sending link…');
         try {
-          const tok = await Store.requestReset(document.getElementById('email').value);
-          if (tok) {
-            a.show('Reset link generated for this demo engine. Use the button below to continue.', 'ok');
-            const go = document.getElementById('demoReset');
-            go.classList.remove('hide');
-            go.href = 'reset-password.html?token=' + encodeURIComponent(tok);
-          } else {
-            a.show('If an account exists for that address, a reset link is on its way. Check your inbox and spam folder.', 'ok');
-          }
+          await Store.requestReset(document.getElementById('email').value);
+          a.show('If an account exists for that address, a reset link is on its way. Check your inbox and spam folder.', 'ok');
           busy(btn, false, 'Send Reset Link');
         } catch (err) { a.show(err.message); busy(btn, false, 'Send Reset Link'); }
       });
@@ -200,7 +207,7 @@
       const form = document.getElementById('resetForm');
       const token = new URLSearchParams(location.search).get('token') || '';
       strength(document.getElementById('password'), document.getElementById('meter'));
-      if (!token && !Store.live) a.show('This link is missing its reset token. Request a new one from the forgot-password page.', 'warn');
+      if (!token) a.show('This link is missing its reset token. Request a new one from the forgot-password page.', 'warn');
 
       form.addEventListener('submit', async e => {
         e.preventDefault(); a.hide();
@@ -212,7 +219,7 @@
         try {
           await Store.resetPassword(token, p1);
           a.show('Password updated. Taking you to sign in…', 'ok');
-          setTimeout(() => location.replace('index.html'), 1100);
+          setTimeout(() => location.replace('index.html'), 1000);
         } catch (err) { a.show(err.message); busy(btn, false, 'Update Password'); }
       });
     }
