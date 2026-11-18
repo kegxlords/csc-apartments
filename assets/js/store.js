@@ -52,7 +52,7 @@
   const DEFAULT_SETTINGS = {
     min_deposit: 3000, max_deposit: 5000000, min_withdrawal: 2000, max_withdrawal: 3000000,
     withdrawal_fee: 8, withdrawals_per_day: 2, referral_l1: 10, referral_l2: 3, referral_l3: 1,
-    income_days: 30, welcome_bonus: 500, checkin_bonus: 50, streak_7: 5, streak_14: 10, streak_30: 20,
+    income_days: 30, income_drop_days: '1,2,3,4,5', welcome_bonus: 500, checkin_bonus: 50, streak_7: 5, streak_14: 10, streak_30: 20,
     withdrawal_days: [1, 2, 3, 4, 5, 6, 0], withdrawal_start: '08:00', withdrawal_end: '18:00',
     bank_name: 'Guaranty Trust Bank', account_number: '0123456789', account_name: 'Pinnacle Apartments Ltd',
     whatsapp_link: 'https://chat.whatsapp.com/HdKsgo89Oi1LUBqMbI9Rmp?s=cl&p=a&mlu=4&ilr=4&iam=2', telegram_link: 'https://t.me/pinnacleapartments',

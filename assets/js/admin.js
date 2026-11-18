@@ -269,13 +269,15 @@
       ['withdrawal_fee', 'Withdrawal fee (%)'], ['withdrawals_per_day', 'Withdrawals per day'],
       ['referral_l1', 'Referral level 1 (%)'], ['referral_l2', 'Referral level 2 (%)'], ['referral_l3', 'Referral level 3 (%)'],
       ['income_days', 'Income duration (days)'], ['welcome_bonus', 'Welcome bonus'], ['checkin_bonus', 'Check-in bonus'],
+      ['withdrawal_days', 'Withdrawal days (0=Sun, 1=Mon … 6=Sat)'],
+      ['income_drop_days', 'Income drop days (0=Sun, 1=Mon … 6=Sat)'],
       ['withdrawal_start', 'Withdrawal start (WAT)'], ['withdrawal_end', 'Withdrawal end (WAT)'],
       ['bank_name', 'Bank name'], ['account_number', 'Account number'], ['account_name', 'Account name'],
       ['support_email', 'Support email'], ['support_link', 'WhatsApp support URL'], ['whatsapp_link', 'WhatsApp group invite URL'], ['telegram_link', 'Telegram URL']
     ];
     VIEW.innerHTML = `<div class="view-head"><div><span class="eyebrow">Configuration</span><h1>Settings</h1></div></div>
       <section class="panel"><form id="settingsForm"><div class="set-grid">
-      ${fields.map(([key, label]) => `<label class="field-row"><span class="label">${esc(label)}</span><input class="input" name="${key}" value="${esc(settingsData[key] ?? '')}" ${/^(min_|max_|withdrawal_fee$|withdrawals_per_day$|referral_|income_days$|welcome_bonus$|checkin_bonus$)/.test(key) ? 'type="number" step="any"' : ''}></label>`).join('')}
+      ${fields.map(([key, label]) => `<label class="field-row"><span class="label">${esc(label)}</span><input class="input" name="${key}" value="${esc(settingsData[key] ?? '')}" placeholder="${key.endsWith('_days') && key !== 'income_days' ? '1,2,3,4,5' : ''}" ${/^(min_|max_|withdrawal_fee$|withdrawals_per_day$|referral_|income_days$|welcome_bonus$|checkin_bonus$)/.test(key) ? 'type="number" step="any"' : ''}></label>`).join('')}
       </div><button class="btn btn--blue" type="submit" style="margin-top:18px">Save settings</button></form></section>`;
     $('#settingsForm').addEventListener('submit', saveSettings);
   }

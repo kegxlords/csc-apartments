@@ -146,7 +146,7 @@ insert into public.settings (key,value) values
  ('min_withdrawal','2000'),('max_withdrawal','3000000'),
  ('withdrawal_fee','8'),('withdrawals_per_day','2'),
  ('referral_l1','10'),('referral_l2','3'),('referral_l3','1'),
- ('income_days','30'),('welcome_bonus','500'),('checkin_bonus','50'),
+ ('income_days','30'),('income_drop_days','1,2,3,4,5'),('welcome_bonus','500'),('checkin_bonus','50'),
  ('streak_7','5'),('streak_14','10'),('streak_30','20'),
  ('withdrawal_days','0,1,2,3,4,5,6'),
  ('withdrawal_start','08:00'),('withdrawal_end','18:00'),
@@ -248,8 +248,10 @@ returns table (scanned int, drops_paid int, amount_paid numeric, leases_complete
 language plpgsql security definer set search_path = public as $$
 declare
   l record; v_due int; v_target int; v_paid int := 0; v_amt numeric := 0;
+  v_income_days text;
   v_done int := 0; v_scan int := 0; v_ref text;
 begin
+  select coalesce(value,'1,2,3,4,5') into v_income_days from public.settings where key='income_drop_days';
   for l in
     select ls.id, ls.user_id, ls.days_paid, ls.started_at,
            u.daily_yield, u.duration_days, u.name
@@ -261,7 +263,11 @@ begin
   loop
     v_scan := v_scan + 1;
     v_due := floor(extract(epoch from (now() - l.started_at)) / 86400);
-    v_target := least(v_due, l.duration_days);
+    select count(*)::int into v_target
+      from generate_series(1, greatest(v_due, 0)) as day_offset
+      where position(',' || extract(dow from (l.started_at + (day_offset || ' days')::interval))::int || ','
+                     in ',' || v_income_days || ',') > 0;
+    v_target := least(v_target, l.duration_days);
 
     while l.days_paid < v_target loop
       l.days_paid := l.days_paid + 1;
