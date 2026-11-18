@@ -90,10 +90,14 @@
   let db;
   try { const raw = localStorage.getItem(KEY); db = raw ? JSON.parse(raw) : seed(); if (!db || db.v !== 1) db = seed(); }
   catch (e) { db = seed(); }
+  if (LIVE) db = seed();
   ['users', 'leases', 'cards', 'tx', 'checkins', 'commissions', 'gift_codes', 'redemptions', 'cron', 'audit'].forEach(k => { if (!Array.isArray(db[k])) db[k] = []; });
   if (!db.units || !db.units.length) db.units = seed().units;
   db.settings = Object.assign(clone(DEFAULT_SETTINGS), db.settings || {});
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} };
+  const save = () => {
+    if (LIVE) return;
+    try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
+  };
   save();
 
   const undoStack = [];
@@ -101,6 +105,56 @@
 
   let sb = null;
   if (LIVE) { sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY); window.sb = sb; }
+  let liveWallet = null;
+  function clearLive() {
+    liveWallet = null; db.session = null; db.users = []; db.leases = []; db.cards = [];
+    db.tx = []; db.checkins = []; db.commissions = [];
+  }
+  const asTime = v => {
+    if (typeof v === 'number') return v;
+    const parsed = Date.parse(v);
+    return Number.isFinite(parsed) ? parsed : now();
+  };
+  const asNumber = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+  function normalizedSettings(source) {
+    const s = Object.assign(clone(DEFAULT_SETTINGS), source || {});
+    ['min_deposit', 'max_deposit', 'min_withdrawal', 'max_withdrawal', 'withdrawal_fee',
+      'withdrawals_per_day', 'referral_l1', 'referral_l2', 'referral_l3', 'income_days',
+      'welcome_bonus', 'checkin_bonus', 'streak_7', 'streak_14', 'streak_30']
+      .forEach(k => { s[k] = asNumber(s[k]); });
+    if (typeof s.withdrawal_days === 'string') s.withdrawal_days = s.withdrawal_days.split(',').map(Number);
+    return s;
+  }
+  async function apiRequest(path, token, method = 'GET', payload = null) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 15000) : null;
+    try {
+      const response = await fetch(path, {
+        method,
+        headers: Object.assign({ Authorization: 'Bearer ' + token }, payload ? { 'Content-Type': 'application/json' } : {}),
+        body: payload ? JSON.stringify(payload) : undefined,
+        signal: controller ? controller.signal : undefined
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error(result.error || 'Server request failed (' + response.status + ').');
+      return result;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('The server took too long to respond. Please try again.');
+      throw e;
+    } finally { if (timer) clearTimeout(timer); }
+  }
+  async function liveRequest(path, method, payload) {
+    if (!LIVE) throw new Error('Live account service is not available.');
+    const { data, error } = await sb.auth.getSession();
+    if (error) throw new Error(error.message);
+    const token = data.session?.access_token;
+    if (!token) throw new Error('Your session has expired. Please sign in again.');
+    return apiRequest(path, token, method, payload);
+  }
+  async function refreshLive() {
+    try { return await S.hydrate(); }
+    catch (e) { console.warn('Live account refresh failed:', e.message); return null; }
+  }
 
   /* ---------------- wallet + income sweep ---------------- */
   function walletOf(userId) {
@@ -118,6 +172,7 @@
   }
 
   function sweep() {
+    if (LIVE) return { paid: 0, amount: 0, completed: 0 };
     const t = now(); let paid = 0, amount = 0, completed = 0;
     db.leases.forEach(l => {
       if (l.status !== 'active') return;
@@ -145,13 +200,81 @@
     live: LIVE, sb, DAY, facade, banner, dayKey, isIn: t => INBOUND.includes(t.type),
 
     async session() {
-      if (LIVE) { const { data } = await sb.auth.getSession(); return data.session ? { user: { id: data.session.user.id, email: data.session.user.email } } : null; }
+      if (LIVE) {
+        const { data, error } = await sb.auth.getSession();
+        if (error) throw new Error(error.message);
+        if (!data.session) { clearLive(); return null; }
+        return { user: { id: data.session.user.id, email: data.session.user.email } };
+      }
       return db.session ? { user: db.users.find(u => u.id === db.session) } : null;
+    },
+    async hydrate() {
+      if (!LIVE) return this.session();
+      const { data, error } = await sb.auth.getSession();
+      if (error) throw new Error(error.message);
+      const session = data.session;
+      if (!session) { clearLive(); return null; }
+      const id = session.user.id, token = session.access_token;
+      const [profileRes, walletRes, unitsRes, networkRes, checkinRes, leaseRes] = await Promise.all([
+        apiRequest('/api/auth-profile', token),
+        apiRequest('/api/wallet', token),
+        apiRequest('/api/units', token),
+        apiRequest('/api/network', token),
+        apiRequest('/api/checkin', token),
+        sb.from('leases').select('*').eq('user_id', id).order('started_at', { ascending: false }).limit(250)
+      ]);
+      if (leaseRes.error) throw new Error(leaseRes.error.message);
+      const profile = profileRes.profile;
+      if (!profile) throw new Error('Your member profile could not be found. Please contact support.');
+      const wallet = walletRes.wallet || profileRes.wallet;
+      if (!wallet) throw new Error('Your wallet could not be loaded. Please try again.');
+      const settings = normalizedSettings(walletRes.settings || profileRes.settings);
+      const me = Object.assign({}, profile, {
+        id, email: session.user.email || profile.email || '',
+        created_at: asTime(profile.created_at),
+        total_funded: asNumber(profile.total_funded), total_withdrawn: asNumber(profile.total_withdrawn)
+      });
+      const levels = networkRes.levels || { l1: [], l2: [], l3: [] };
+      const peers = [];
+      [['l1', 'referred_by'], ['l2', 'upline_2'], ['l3', 'upline_3']].forEach(([level, relation]) => {
+        (levels[level] || []).forEach(row => peers.push(Object.assign({}, row, {
+          id: row.id, [relation]: id, created_at: asTime(row.created_at), total_funded: asNumber(row.total_funded)
+        })));
+      });
+      const units = (unitsRes.units || []).map(u => Object.assign({}, u, {
+        price: asNumber(u.price), daily_yield: asNumber(u.daily_yield), duration_days: asNumber(u.duration_days),
+        purchase_limit: asNumber(u.purchase_limit), bedrooms: asNumber(u.bedrooms), bathrooms: asNumber(u.bathrooms),
+        sqm: asNumber(u.sqm), sold: asNumber(u.sold), sort_order: asNumber(u.sort_order)
+      }));
+      db.session = id;
+      db.users = [me, ...peers];
+      db.settings = settings;
+      db.units = units;
+      db.leases = (leaseRes.data || []).map(l => Object.assign({}, l, {
+        started_at: asTime(l.started_at), days_paid: asNumber(l.days_paid), total_collected: asNumber(l.total_collected)
+      }));
+      db.tx = (walletRes.transactions || []).map(t => Object.assign({}, t, {
+        amount: asNumber(t.amount), fee: asNumber(t.fee), net_amount: asNumber(t.net_amount), created_at: asTime(t.created_at)
+      }));
+      db.cards = (walletRes.cards || profileRes.cards || []).map(c => Object.assign({}, c, { created_at: asTime(c.created_at) }));
+      db.checkins = (checkinRes.history || []).map(c => ({
+        id: c.id, user_id: id, date: c.checkin_date, base: asNumber(c.base_amount),
+        bonus: asNumber(c.total_amount) - asNumber(c.base_amount), total: asNumber(c.total_amount),
+        streak: asNumber(c.streak_at_time), created_at: asTime(c.created_at)
+      }));
+      db.commissions = networkRes.commissions || [];
+      liveWallet = {
+        balance: asNumber(wallet.balance), income: asNumber(wallet.income_balance), locked: asNumber(wallet.locked)
+      };
+      return { user: { id, email: me.email } };
     },
     me() { return db.session ? db.users.find(u => u.id === db.session) : null; },
     settings() { return clone(db.settings); },
     setting(k) { return db.settings[k]; },
-    wallet() { const m = this.me(); return m ? clone(walletOf(m.id)) : { balance: 0, income: 0, locked: 0 }; },
+    wallet() {
+      if (LIVE) return liveWallet ? clone(liveWallet) : { balance: 0, income: 0, locked: 0 };
+      const m = this.me(); return m ? clone(walletOf(m.id)) : { balance: 0, income: 0, locked: 0 };
+    },
 
     units(filter) {
       let list = db.units.filter(u => u.status !== 'hidden' && u.status !== 'deleted');
@@ -289,7 +412,10 @@
       db.session = u.id; save(); sweep();
       return true;
     },
-    async logout() { if (LIVE) { await sb.auth.signOut(); return; } db.session = null; save(); },
+    async logout() {
+      if (LIVE) { await sb.auth.signOut(); clearLive(); return; }
+      db.session = null; save();
+    },
 
     async requestReset(email) {
       email = String(email || '').trim().toLowerCase();
@@ -311,6 +437,11 @@
 
     /* ---- money & leases ---- */
     async rent(unitId) {
+      if (LIVE) {
+        const result = await liveRequest('/api/units', 'POST', { action: 'lease', unit_id: unitId });
+        await refreshLive();
+        return { unit: this.unit(unitId), message: result.message };
+      }
       const m = this.me(); if (!m) throw new Error('Sign in to lease a unit.');
       const u = db.units.find(x => x.id === unitId);
       if (!u) throw new Error('That unit no longer exists.');
@@ -327,6 +458,13 @@
     },
 
     async saveCard({ bank_name, account_number, account_name, makeDefault }) {
+      if (LIVE) {
+        const result = await liveRequest('/api/auth-profile', 'POST', {
+          action: 'save_card', bank_name, account_number, account_name, make_default: !!makeDefault
+        });
+        await refreshLive();
+        return result;
+      }
       const m = this.me(); if (!m) throw new Error('Sign in first.');
       if (!bank_name) throw new Error('Select your bank.');
       if (!/^\d{10}$/.test(account_number)) throw new Error('Account number must be exactly 10 digits.');
@@ -339,11 +477,21 @@
       save(); return {};
     },
     async setDefaultCard(id) {
+      if (LIVE) {
+        const result = await liveRequest('/api/auth-profile', 'POST', { action: 'default_card', id });
+        await refreshLive();
+        return result;
+      }
       const m = this.me(); snapshot('Default card');
       db.cards.forEach(c => { if (c.user_id === m.id) c.is_default = c.id === id; });
       save(); return {};
     },
     async deleteCard(id) {
+      if (LIVE) {
+        const result = await liveRequest('/api/auth-profile', 'POST', { action: 'delete_card', id });
+        await refreshLive();
+        return result;
+      }
       const m = this.me(); snapshot('Delete card');
       const i = db.cards.findIndex(c => c.id === id && c.user_id === m.id);
       if (i < 0) throw new Error('Card not found.');
@@ -355,6 +503,11 @@
     },
 
     async deposit(amount, reference) {
+      if (LIVE) {
+        const result = await liveRequest('/api/wallet', 'POST', { action: 'deposit', amount: Number(amount), reference });
+        await refreshLive();
+        return { reference: result.reference };
+      }
       const m = this.me(); if (!m) throw new Error('Sign in first.');
       const s = db.settings; amount = Number(amount);
       if (!amount || amount < s.min_deposit) throw new Error('Minimum deposit is ₦' + s.min_deposit.toLocaleString() + '.');
@@ -367,6 +520,11 @@
     },
 
     async withdraw(amount, cardId) {
+      if (LIVE) {
+        const result = await liveRequest('/api/wallet', 'POST', { action: 'withdraw', amount: Number(amount), card_id: cardId });
+        await refreshLive();
+        return { reference: result.reference, fee: asNumber(result.fee), net: asNumber(result.net) };
+      }
       const m = this.me(); if (!m) throw new Error('Sign in first.');
       const r = this.withdrawRules(), w = walletOf(m.id); amount = Number(amount);
       const card = db.cards.find(c => c.id === cardId && c.user_id === m.id);
@@ -387,6 +545,11 @@
     },
 
     async checkin() {
+      if (LIVE) {
+        const result = await liveRequest('/api/checkin', 'POST', { action: 'claim' });
+        await refreshLive();
+        return { base: asNumber(result.base), bonus: asNumber(result.bonus), total: asNumber(result.total), streak: asNumber(result.streak), pct: asNumber(result.pct) };
+      }
       const m = this.me(); if (!m) throw new Error('Sign in first.');
       const today = dayKey(now());
       if (db.checkins.some(c => c.user_id === m.id && c.date === today)) throw new Error('You have already checked in today.');
@@ -404,14 +567,19 @@
     },
 
     async updateProfile(patch) {
+      if (LIVE) {
+        const result = await liveRequest('/api/auth-profile', 'POST', Object.assign({ action: 'update_profile' }, patch));
+        await refreshLive();
+        return result;
+      }
       const m = this.me(); if (!m) throw new Error('Sign in first.');
       snapshot('Profile'); Object.assign(m, patch); save(); return {};
     },
 
     sweep,
-    undo() { const s = undoStack.pop(); if (!s) return false; const sess = db.session; db = s.data; db.session = sess; save(); return s.label; },
-    canUndo() { return undoStack.length > 0; },
-    reset() { db = seed(); save(); }
+    undo() { if (LIVE) return false; const s = undoStack.pop(); if (!s) return false; const sess = db.session; db = s.data; db.session = sess; save(); return s.label; },
+    canUndo() { return !LIVE && undoStack.length > 0; },
+    reset() { if (LIVE) { clearLive(); return; } db = seed(); save(); }
   };
 
   window.Store = S;

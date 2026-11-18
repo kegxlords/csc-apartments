@@ -8,13 +8,23 @@ export default async function handler(req, res) {
         .select('*').in('status', ['live', 'upcoming']).order('sort_order');
       if (error) throw new Error(error.message);
 
+      let units = data || [];
       let owned = {};
       if (req.headers.authorization) {
         const u = await user(req);
-        const { data: ls } = await sb.from('leases').select('unit_id').eq('user_id', u.id).eq('status', 'active');
-        (ls || []).forEach(l => { owned[l.unit_id] = (owned[l.unit_id] || 0) + 1; });
+        const { data: ls, error: leaseError } = await sb.from('leases').select('unit_id,status').eq('user_id', u.id);
+        if (leaseError) throw new Error(leaseError.message);
+        (ls || []).filter(l => l.status === 'active').forEach(l => { owned[l.unit_id] = (owned[l.unit_id] || 0) + 1; });
+        const leaseUnitIds = [...new Set((ls || []).map(l => l.unit_id).filter(Boolean))];
+        if (leaseUnitIds.length) {
+          const { data: leasedUnits, error: leasedUnitsError } = await sb.from('units').select('*').in('id', leaseUnitIds);
+          if (leasedUnitsError) throw new Error(leasedUnitsError.message);
+          const byId = new Map(units.map(unit => [unit.id, unit]));
+          (leasedUnits || []).forEach(unit => byId.set(unit.id, unit));
+          units = [...byId.values()].sort((a, b) => Number(a.sort_order) - Number(b.sort_order));
+        }
       }
-      return ok(res, { units: data || [], owned });
+      return ok(res, { units, owned });
     }
 
     if (req.method === 'POST') {
