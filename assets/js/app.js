@@ -218,7 +218,12 @@
   }
 
   /* ---------------- guard ---------------- */
-  const PUBLIC = ['index.html', 'register.html', 'forgot-password.html', 'reset-password.html', ''];
+  const PUBLIC = [
+    '', 'index.html', 'index',
+    'register', 'register.html',
+    'forgot-password', 'forgot-password.html',
+    'reset-password', 'reset-password.html'
+  ];
   async function guard() {
     const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
     const sess = await Store.session();
