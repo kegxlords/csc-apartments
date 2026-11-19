@@ -74,8 +74,18 @@ export default async function handler(req, res) {
           sb.from('referral_commissions').select('*').eq('beneficiary_id', id).order('created_at', { ascending: false }),
           sb.from('checkins').select('*').eq('user_id', id).order('checkin_date', { ascending: false }).limit(40)
         ]);
+        const memberLeases = (ls.data || []).map(lease => {
+          const unit = lease.units;
+          if (!unit) return lease;
+          return Object.assign({}, lease, { unit: Object.assign({}, unit, {
+            price: lease.unit_price ?? unit.price,
+            daily_yield: lease.daily_yield ?? unit.daily_yield,
+            duration_days: lease.duration_days ?? unit.duration_days,
+            income_drop_days: lease.income_drop_days || unit.income_drop_days
+          }) });
+        });
         return ok(res, {
-          profile: p.data, wallet: w.data, leases: ls.data || [], transactions: tx.data || [],
+          profile: p.data, wallet: w.data, leases: memberLeases, transactions: tx.data || [],
           cards: cards.data || [], team: { l1: l1.data || [], l2: l2.data || [], l3: l3.data || [] },
           commissions: comm.data || [], checkins: ci.data || []
         });

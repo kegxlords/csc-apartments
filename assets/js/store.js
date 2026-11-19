@@ -201,15 +201,24 @@
     db.leases.forEach(l => {
       if (l.status !== 'active') return;
       const u = db.units.find(x => x.id === l.unit_id); if (!u) return;
-      const target = Math.min(Math.floor((t - l.started_at) / DAY), u.duration_days);
+      const duration = Number(l.duration_days ?? u.duration_days);
+      const dailyYield = Number(l.daily_yield ?? u.daily_yield);
+      const dropDays = String(l.income_drop_days ?? u.income_drop_days ?? db.settings.income_drop_days ?? '1,2,3,4,5')
+        .split(',').map(Number);
+      const elapsed = Math.max(0, Math.floor((t - l.started_at) / DAY));
+      let target = 0;
+      for (let offset = 1; offset <= elapsed; offset++) {
+        if (dropDays.includes(new Date(l.started_at + offset * DAY).getDay())) target++;
+      }
+      target = Math.min(target, duration);
       while (l.days_paid < target) {
         l.days_paid++;
         const r = 'INC-' + l.id.slice(0, 6) + '-' + l.days_paid;
         if (db.tx.some(x => x.reference === r)) continue;
-        db.tx.push({ id: uid(), user_id: l.user_id, type: 'rental_income', amount: u.daily_yield, fee: 0, net_amount: u.daily_yield, description: u.name + ' · drop ' + l.days_paid, reference: r, status: 'completed', created_at: l.started_at + l.days_paid * DAY });
-        l.total_collected += u.daily_yield; paid++; amount += u.daily_yield;
+        db.tx.push({ id: uid(), user_id: l.user_id, type: 'rental_income', amount: dailyYield, fee: 0, net_amount: dailyYield, description: u.name + ' · drop ' + l.days_paid, reference: r, status: 'completed', created_at: l.started_at + l.days_paid * DAY });
+        l.total_collected += dailyYield; paid++; amount += dailyYield;
       }
-      if (l.days_paid >= u.duration_days) { l.status = 'completed'; completed++; }
+      if (l.days_paid >= duration) { l.status = 'completed'; completed++; }
     });
     if (paid || completed) {
       db.cron.unshift({ at: t, paid, amount, completed, ok: true });
@@ -275,7 +284,10 @@
       db.settings = settings;
       db.units = units;
       db.leases = (profileRes.leases || []).map(l => Object.assign({}, l, {
-        started_at: asTime(l.started_at), days_paid: asNumber(l.days_paid), total_collected: asNumber(l.total_collected)
+        started_at: asTime(l.started_at), days_paid: asNumber(l.days_paid), total_collected: asNumber(l.total_collected),
+        unit_price: l.unit_price == null ? null : asNumber(l.unit_price),
+        daily_yield: l.daily_yield == null ? null : asNumber(l.daily_yield),
+        duration_days: l.duration_days == null ? null : asNumber(l.duration_days)
       }));
       db.tx = (walletRes.transactions || []).map(t => Object.assign({}, t, {
         amount: asNumber(t.amount), fee: asNumber(t.fee), net_amount: asNumber(t.net_amount), created_at: asTime(t.created_at)
@@ -321,7 +333,16 @@
     leases() {
       const m = this.me(); if (!m) return [];
       return db.leases.filter(l => l.user_id === m.id)
-        .map(l => Object.assign(clone(l), { unit: clone(db.units.find(x => x.id === l.unit_id)) }))
+        .map(l => {
+          const unit = clone(db.units.find(x => x.id === l.unit_id));
+          if (unit) {
+            if (l.unit_price != null) unit.price = Number(l.unit_price);
+            if (l.daily_yield != null) unit.daily_yield = Number(l.daily_yield);
+            if (l.duration_days != null) unit.duration_days = Number(l.duration_days);
+            unit.income_drop_days = l.income_drop_days || unit.income_drop_days || db.settings.income_drop_days;
+          }
+          return Object.assign(clone(l), { unit });
+        })
         .sort((a, b) => b.started_at - a.started_at);
     },
     nextDrop() {
@@ -486,7 +507,12 @@
       if (w.balance - w.locked < u.price) throw new Error('Insufficient balance. Fund your wallet to lease this unit.');
       snapshot('Lease ' + u.name);
       db.tx.push({ id: uid(), user_id: m.id, type: 'lease_purchase', amount: u.price, fee: 0, net_amount: u.price, description: 'Leased ' + u.name, reference: 'LSE-' + code6(), status: 'completed', created_at: now() });
-      db.leases.push({ id: uid(), user_id: m.id, unit_id: u.id, status: 'active', days_paid: 0, total_collected: 0, started_at: now() });
+      db.leases.push({
+        id: uid(), user_id: m.id, unit_id: u.id, unit_price: u.price,
+        daily_yield: u.daily_yield, duration_days: u.duration_days,
+        income_drop_days: u.income_drop_days || db.settings.income_drop_days,
+        status: 'active', days_paid: 0, total_collected: 0, started_at: now()
+      });
       u.sold++; save();
       return { unit: u };
     },

@@ -36,7 +36,8 @@ create table if not exists public.units (
   id uuid primary key default gen_random_uuid(),
   slug text unique, name text not null, tier text,
   price numeric(15,2) not null, daily_yield numeric(15,2) not null,
-  duration_days int not null, purchase_limit int not null default 5,
+  duration_days int not null, income_drop_days text,
+  purchase_limit int not null default 5,
   bedrooms int default 1, bathrooms int default 1, sqm int default 0,
   image_url text, amenities text[] default '{}', description text,
   status text not null default 'live' check (status in ('live','hidden','upcoming','deleted')),
@@ -44,10 +45,37 @@ create table if not exists public.units (
   created_at timestamptz default now()
 );
 
+create or replace function public.vip_package_rank(p_label text)
+returns int language sql immutable parallel safe as $$
+  select substring(coalesce(p_label, '') from '(?i)VIP[[:space:]_-]*([0-9]+)')::int
+$$;
+
+create or replace function public.enforce_vip5_package_terms()
+returns trigger language plpgsql set search_path = public as $$
+declare v_rank int;
+begin
+  v_rank := greatest(
+    coalesce(public.vip_package_rank(new.tier), 0),
+    coalesce(public.vip_package_rank(new.name), 0)
+  );
+  if v_rank >= 5 then
+    new.daily_yield := round(new.price * 0.20, 2);
+    new.duration_days := 10;
+    new.income_drop_days := '0,1,2,3,4,5,6';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists enforce_vip5_package_terms on public.units;
+create trigger enforce_vip5_package_terms before insert or update on public.units
+for each row execute function public.enforce_vip5_package_terms();
+
 create table if not exists public.leases (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   unit_id uuid not null references public.units(id),
+  unit_price numeric(15,2) not null, daily_yield numeric(15,2) not null,
+  duration_days int not null, income_drop_days text not null,
   status text not null default 'active' check (status in ('active','completed','terminated')),
   days_paid int not null default 0,
   total_collected numeric(15,2) not null default 0,
@@ -168,6 +196,26 @@ insert into public.units (slug,name,tier,price,daily_yield,duration_days,purchas
  ('penthouse','Sky Penthouse','Penthouse',2000000,195000,120,1,5,4,340,'live',5,'{"24/7 Power","Fibre WiFi","CCTV","Pool","Gym","Concierge"}','Fully serviced and professionally managed.')
 on conflict (slug) do nothing;
 
+-- Snapshot the terms active at lease creation so later catalogue edits only
+-- affect future purchases.
+create or replace function public.snapshot_lease_terms()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare u public.units%rowtype; v_days text;
+begin
+  select * into u from public.units where id = new.unit_id;
+  if not found then raise exception 'Package not found.'; end if;
+  select value into v_days from public.settings where key = 'income_drop_days';
+  new.unit_price := u.price;
+  new.daily_yield := u.daily_yield;
+  new.duration_days := u.duration_days;
+  new.income_drop_days := coalesce(u.income_drop_days, v_days, '1,2,3,4,5');
+  return new;
+end $$;
+
+drop trigger if exists snapshot_lease_terms on public.leases;
+create trigger snapshot_lease_terms before insert on public.leases
+for each row execute function public.snapshot_lease_terms();
+
 -- ---------------- admin helper (avoids RLS recursion) ----------------
 create or replace function public.is_admin()
 returns boolean language sql security definer stable set search_path = public as $$
@@ -248,13 +296,11 @@ returns table (scanned int, drops_paid int, amount_paid numeric, leases_complete
 language plpgsql security definer set search_path = public as $$
 declare
   l record; v_due int; v_target int; v_paid int := 0; v_amt numeric := 0;
-  v_income_days text;
   v_done int := 0; v_scan int := 0; v_ref text;
 begin
-  select coalesce(value,'1,2,3,4,5') into v_income_days from public.settings where key='income_drop_days';
   for l in
     select ls.id, ls.user_id, ls.days_paid, ls.started_at,
-           u.daily_yield, u.duration_days, u.name
+           ls.daily_yield, ls.duration_days, ls.income_drop_days, u.name
     from public.leases ls join public.units u on u.id = ls.unit_id
     where ls.status = 'active'
     order by ls.started_at
@@ -266,7 +312,7 @@ begin
     select count(*)::int into v_target
       from generate_series(1, greatest(v_due, 0)) as day_offset
       where position(',' || extract(dow from (l.started_at + (day_offset || ' days')::interval))::int || ','
-                     in ',' || v_income_days || ',') > 0;
+                     in ',' || l.income_drop_days || ',') > 0;
     v_target := least(v_target, l.duration_days);
 
     while l.days_paid < v_target loop
@@ -293,8 +339,18 @@ begin
     end if;
   end loop;
 
-  select count(*) into remaining from public.leases
-    where status='active' and floor(extract(epoch from (now() - started_at))/86400) > days_paid;
+  select count(*) into remaining
+  from public.leases as ls
+  where ls.status = 'active'
+    and (
+      select count(*)::int
+      from generate_series(
+        1,
+        greatest(floor(extract(epoch from (now() - ls.started_at)) / 86400)::int, 0)
+      ) as day_offset
+      where position(',' || extract(dow from (ls.started_at + (day_offset || ' days')::interval))::int || ','
+                     in ',' || ls.income_drop_days || ',') > 0
+    ) > ls.days_paid;
 
   return query select v_scan, v_paid, v_amt, v_done, remaining;
 end $$;

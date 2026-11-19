@@ -117,15 +117,24 @@
       if (l.status !== 'active') return;
       const u = db.units.find(x => x.id === l.unit_id); if (!u) return;
       scanned++;
-      const target = Math.min(Math.floor((t - l.started_at) / DAY), u.duration_days);
+      const duration = Number(l.duration_days ?? u.duration_days);
+      const dailyYield = Number(l.daily_yield ?? u.daily_yield);
+      const dropDays = String(l.income_drop_days ?? u.income_drop_days ?? db.settings.income_drop_days ?? '1,2,3,4,5')
+        .split(',').map(Number);
+      const elapsed = Math.max(0, Math.floor((t - l.started_at) / DAY));
+      let target = 0;
+      for (let offset = 1; offset <= elapsed; offset++) {
+        if (dropDays.includes(new Date(l.started_at + offset * DAY).getDay())) target++;
+      }
+      target = Math.min(target, duration);
       while (l.days_paid < target) {
         l.days_paid++;
         const r = 'INC-' + l.id.slice(0, 6) + '-' + l.days_paid;
         if (db.tx.some(x => x.reference === r)) continue;
-        db.tx.push({ id: uid(), user_id: l.user_id, type: 'rental_income', amount: u.daily_yield, fee: 0, net_amount: u.daily_yield, description: u.name + ' · drop ' + l.days_paid, reference: r, status: 'completed', created_at: l.started_at + l.days_paid * DAY });
-        l.total_collected += u.daily_yield; paid++; amount += u.daily_yield;
+        db.tx.push({ id: uid(), user_id: l.user_id, type: 'rental_income', amount: dailyYield, fee: 0, net_amount: dailyYield, description: u.name + ' · drop ' + l.days_paid, reference: r, status: 'completed', created_at: l.started_at + l.days_paid * DAY });
+        l.total_collected += dailyYield; paid++; amount += dailyYield;
       }
-      if (l.days_paid >= u.duration_days) { l.status = 'completed'; completed++; }
+      if (l.days_paid >= duration) { l.status = 'completed'; completed++; }
     });
     return { scanned, paid, amount, completed };
   }
@@ -208,7 +217,16 @@
       const cols = u => ({ id: u.id, full_name: u.full_name, created_at: u.created_at, has_funded: u.has_funded, total_funded: u.total_funded });
       return {
         profile: Object.assign({}, p, { wallet: walletOf(d, id) }),
-        leases: d.leases.filter(l => l.user_id === id).map(l => Object.assign({}, l, { unit: d.units.find(u => u.id === l.unit_id) })).sort((a, b) => b.started_at - a.started_at),
+        leases: d.leases.filter(l => l.user_id === id).map(l => {
+          const source = d.units.find(u => u.id === l.unit_id);
+          const unit = source ? Object.assign({}, source, {
+            price: l.unit_price ?? source.price,
+            daily_yield: l.daily_yield ?? source.daily_yield,
+            duration_days: l.duration_days ?? source.duration_days,
+            income_drop_days: l.income_drop_days || source.income_drop_days || d.settings.income_drop_days
+          }) : null;
+          return Object.assign({}, l, { unit });
+        }).sort((a, b) => b.started_at - a.started_at),
         transactions: d.tx.filter(t => t.user_id === id).sort((a, b) => b.created_at - a.created_at),
         cards: d.cards.filter(c => c.user_id === id),
         checkins: d.checkins.filter(c => c.user_id === id).sort((a, b) => b.created_at - a.created_at),
@@ -334,7 +352,12 @@
       return commit('Grant residence', d => {
         const u = d.users.find(x => x.id === userId), unit = d.units.find(x => x.id === unitId);
         if (!u || !unit) throw new Error('Member or residence not found.');
-        d.leases.push({ id: uid(), user_id: userId, unit_id: unitId, status: 'active', days_paid: 0, total_collected: 0, granted_by_admin: true, started_at: now() });
+        d.leases.push({
+          id: uid(), user_id: userId, unit_id: unitId, unit_price: unit.price,
+          daily_yield: unit.daily_yield, duration_days: unit.duration_days,
+          income_drop_days: unit.income_drop_days || d.settings.income_drop_days,
+          status: 'active', days_paid: 0, total_collected: 0, granted_by_admin: true, started_at: now()
+        });
         unit.sold++;
         d.tx.push({ id: uid(), user_id: userId, type: 'admin_credit', amount: 0, fee: 0, net_amount: 0, description: 'Residence granted: ' + unit.name, reference: ref('GRT'), status: 'completed', created_at: now() });
         d.audit.unshift({ at: now(), action: 'grant_lease', target: userId, meta: { unit: unit.name } });
